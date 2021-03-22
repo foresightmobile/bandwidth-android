@@ -1,4 +1,4 @@
-package com.bandwidth.webrtc.signaling.rpc.base;
+package com.bandwidth.webrtc.signaling.rpc.transit.base;
 
 public class Response<T> {
     private String id;
