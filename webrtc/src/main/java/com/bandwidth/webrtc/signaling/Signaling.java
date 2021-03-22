@@ -9,10 +9,18 @@ import com.bandwidth.webrtc.signaling.listeners.OnSetMediaPreferencesListener;
 import java.io.IOException;
 import java.net.URI;
 
+import javax.websocket.DeploymentException;
+
 public interface Signaling {
     void setOnConnectListener(OnConnectListener listener);
     void setOnDisconnectListener(OnDisconnectListener listener);
     void setOnOfferSdpListener(OnOfferSdpListener listener);
     void setOnRequestToPublishListener(OnRequestToPublishListener listener);
     void setOnSetMediaPreferencesListener(OnSetMediaPreferencesListener listener);
+
+    void connect(URI uri) throws IOException, DeploymentException;
+    void disconnect() throws IOException, NullSessionException;
+    void offerSdp(String endpointId, String sdp) throws NullSessionException;
+    void requestToPublish(Boolean audio, Boolean video, String alias) throws NullSessionException;
+    void setMediaPreferences() throws NullSessionException;
 }
