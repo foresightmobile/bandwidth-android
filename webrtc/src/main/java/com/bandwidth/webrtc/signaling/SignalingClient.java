@@ -31,6 +31,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.UUID;
 
+import javax.websocket.ClientEndpoint;
 import javax.websocket.CloseReason;
 import javax.websocket.ContainerProvider;
 import javax.websocket.DeploymentException;
@@ -40,6 +41,7 @@ import javax.websocket.OnOpen;
 import javax.websocket.Session;
 import javax.websocket.WebSocketContainer;
 
+@ClientEndpoint
 public class SignalingClient implements Signaling {
     private SignalingDelegate delegate;
 
@@ -82,9 +84,13 @@ public class SignalingClient implements Signaling {
     }
 
     @Override
-    public void connect(URI uri) throws IOException, DeploymentException {
+    public void connect(URI uri) throws IOException, ConnectionException {
         WebSocketContainer container = ContainerProvider.getWebSocketContainer();
-        container.connectToServer(this, uri);
+        try {
+            container.connectToServer(this, uri);
+        } catch (DeploymentException e) {
+            throw new ConnectionException(e);
+        }
     }
 
     @Override
@@ -175,7 +181,7 @@ public class SignalingClient implements Signaling {
     }
 
     @OnOpen
-    public void onOpen(Session session) {
+    private void onOpen(Session session) {
         this.session = session;
 
         if (onConnectListener != null) {
@@ -184,7 +190,7 @@ public class SignalingClient implements Signaling {
     }
 
     @OnClose
-    public void onClose(Session session, CloseReason reason) {
+    private void onClose(Session session, CloseReason reason) {
         this.session = null;
 
         if (onDisconnectListener != null) {
@@ -193,7 +199,7 @@ public class SignalingClient implements Signaling {
     }
 
     @OnMessage
-    public void onMessage(String message) {
+    private void onMessage(String message) {
         System.out.println("INCOMING MESSAGE");
         System.out.println(message);
 
