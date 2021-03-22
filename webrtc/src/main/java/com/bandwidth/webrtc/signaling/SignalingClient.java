@@ -1,5 +1,5 @@
 package com.bandwidth.webrtc.signaling;
 
-public class SignalingClient {
+public class SignalingClient implements Signaling {
 
 }
