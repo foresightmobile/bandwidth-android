@@ -199,7 +199,7 @@ public class SignalingClient implements Signaling {
     }
 
     @OnMessage
-    private void onMessage(String message) {
+    private void onMessage(String message) throws NullSessionException {
         System.out.println("INCOMING MESSAGE");
         System.out.println(message);
 
@@ -214,7 +214,7 @@ public class SignalingClient implements Signaling {
         }
     }
 
-    private void handleResponse(String message, String id) {
+    private void handleResponse(String message, String id) throws NullSessionException {
         QueueRequest pendingQueueRequest = pendingQueueRequests.get(id);
         pendingQueueRequest.getTimer().cancel();
 
