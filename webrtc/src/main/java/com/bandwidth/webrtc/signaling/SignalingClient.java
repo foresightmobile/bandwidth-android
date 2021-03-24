@@ -19,6 +19,11 @@ import com.bandwidth.webrtc.signaling.rpc.transit.base.Request;
 import com.bandwidth.webrtc.signaling.rpc.transit.base.Response;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import com.neovisionaries.ws.client.WebSocket;
+import com.neovisionaries.ws.client.WebSocketAdapter;
+import com.neovisionaries.ws.client.WebSocketException;
+import com.neovisionaries.ws.client.WebSocketFactory;
+import com.neovisionaries.ws.client.WebSocketFrame;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -31,21 +36,10 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.UUID;
 
-import javax.websocket.ClientEndpoint;
-import javax.websocket.CloseReason;
-import javax.websocket.ContainerProvider;
-import javax.websocket.DeploymentException;
-import javax.websocket.OnClose;
-import javax.websocket.OnMessage;
-import javax.websocket.OnOpen;
-import javax.websocket.Session;
-import javax.websocket.WebSocketContainer;
-
-@ClientEndpoint
 public class SignalingClient implements Signaling {
     private SignalingDelegate delegate;
 
-    private Session session;
+    private WebSocket webSocket;
     private Map<String, QueueRequest> pendingQueueRequests = new HashMap<>();
 
     private OnConnectListener onConnectListener;
@@ -56,6 +50,8 @@ public class SignalingClient implements Signaling {
 
     public SignalingClient(SignalingDelegate delegate) {
         this.delegate = delegate;
+
+
     }
 
     @Override
@@ -84,22 +80,49 @@ public class SignalingClient implements Signaling {
     }
 
     @Override
-    public void connect(URI uri) throws IOException, ConnectionException {
-        WebSocketContainer container = ContainerProvider.getWebSocketContainer();
+    public void connect(URI uri) throws IOException {
+        webSocket = new WebSocketFactory().createSocket(uri);
+        webSocket.addListener(new WebSocketAdapter() {
+            @Override
+            public void onConnected(WebSocket websocket, Map<String, List<String>> headers) throws Exception {
+                if (onConnectListener != null) {
+                    onConnectListener.onConnect(SignalingClient.this);
+                }
+            }
+
+            @Override
+            public void onDisconnected(WebSocket websocket, WebSocketFrame serverCloseFrame, WebSocketFrame clientCloseFrame, boolean closedByServer) throws Exception {
+                if (onDisconnectListener != null) {
+                    onDisconnectListener.onDisconnect(SignalingClient.this);
+                }
+            }
+
+            @Override
+            public void onTextMessage(WebSocket websocket, String message) throws Exception {
+                // Determine if we're receiving a response or notification.
+                Response response = new Gson().fromJson(message, Response.class);
+                Notification notification = new Gson().fromJson(message, Notification.class);
+
+                if (response != null) {
+                    handleResponse(message, response.getId());
+                } else if (notification != null) {
+                    handleNotification(message, notification);
+                }
+
+                System.out.println(message);
+            }
+        });
+
         try {
-            container.connectToServer(this, uri);
-        } catch (DeploymentException e) {
-            throw new ConnectionException(e);
+            webSocket.connect();
+        } catch (WebSocketException e) {
+            e.printStackTrace();
         }
     }
 
     @Override
-    public void disconnect() throws IOException, NullSessionException {
-        if (session == null) {
-            throw new NullSessionException("There is no available session, session is null.");
-        }
-
-        session.close();
+    public void disconnect() {
+        webSocket.sendClose();
     }
 
     @Override
@@ -140,11 +163,7 @@ public class SignalingClient implements Signaling {
         sendRequest(request, 5000L);
     }
 
-    private void sendRequest(Request request, Long timeout) throws NullSessionException {
-        if (session == null) {
-            throw new NullSessionException("There is no available session, session is null.");
-        }
-
+    private void sendRequest(Request request, Long timeout) {
         Timer timer = new Timer();
         timer.schedule(new TimerTask() {
             @Override
@@ -161,57 +180,17 @@ public class SignalingClient implements Signaling {
 
         System.out.println(json);
 
-        if (session != null) {
-            // Send our request to the moon (or signaling server).
-            session.getAsyncRemote().sendText(json);
-        }
+        // Send our request to the moon (or signaling server).
+        webSocket.sendText(json);
     }
 
-    private void sendNotification(Notification notification) throws NullSessionException {
-        if (session == null) {
-            throw new NullSessionException("There is no available session, session is null.");
-        }
-
+    private void sendNotification(Notification notification) {
         String json = new Gson().toJson(notification);
 
         System.out.println(json);
 
         // Send our notification to the moon (or signaling server).
-        session.getAsyncRemote().sendText(json);
-    }
-
-    @OnOpen
-    private void onOpen(Session session) {
-        this.session = session;
-
-        if (onConnectListener != null) {
-            onConnectListener.onConnect(this);
-        }
-    }
-
-    @OnClose
-    private void onClose(Session session, CloseReason reason) {
-        this.session = null;
-
-        if (onDisconnectListener != null) {
-            onDisconnectListener.onDisconnect(this);
-        }
-    }
-
-    @OnMessage
-    private void onMessage(String message) throws NullSessionException {
-        System.out.println("INCOMING MESSAGE");
-        System.out.println(message);
-
-        // Determine if we're receiving a response or notification.
-        Response response = new Gson().fromJson(message, Response.class);
-        Notification notification = new Gson().fromJson(message, Notification.class);
-
-        if (response != null) {
-            handleResponse(message, response.getId());
-        } else if (notification != null) {
-            handleNotification(message, notification);
-        }
+        webSocket.sendText(json);
     }
 
     private void handleResponse(String message, String id) throws NullSessionException {

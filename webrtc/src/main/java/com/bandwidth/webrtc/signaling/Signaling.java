@@ -16,8 +16,8 @@ public interface Signaling {
     void setOnRequestToPublishListener(OnRequestToPublishListener listener);
     void setOnSetMediaPreferencesListener(OnSetMediaPreferencesListener listener);
 
-    void connect(URI uri) throws IOException, ConnectionException;
-    void disconnect() throws IOException, NullSessionException;
+    void connect(URI uri) throws IOException;
+    void disconnect();
     void offerSdp(String endpointId, String sdp) throws NullSessionException;
     void requestToPublish(Boolean audio, Boolean video, String alias) throws NullSessionException;
     void setMediaPreferences() throws NullSessionException;

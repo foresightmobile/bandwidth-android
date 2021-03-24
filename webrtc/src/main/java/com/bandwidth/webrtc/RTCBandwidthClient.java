@@ -161,7 +161,7 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
 
                 @Override
                 public void onAddTrack(RtpReceiver rtpReceiver, MediaStream[] mediaStreams) {
-                    delegate.onStreamAvailable(result.getEndpointId(), result.getParticipantId(), alias, result.getMediaTypes(), rtpReceiver);
+                    delegate.onStreamAvailable(RTCBandwidthClient.this, result.getEndpointId(), result.getParticipantId(), alias, result.getMediaTypes(), rtpReceiver);
                 }
             });
 
@@ -283,7 +283,7 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
 
     @Override
     public void onEndpointRemoved(Signaling signaling, EndpointRemovedParams params) {
-        delegate.onStreamUnavailable(params.getEndpointId());
+        delegate.onStreamUnavailable(RTCBandwidthClient.this, params.getEndpointId());
     }
 
     @Override
@@ -341,7 +341,7 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
 
             @Override
             public void onAddTrack(RtpReceiver rtpReceiver, MediaStream[] mediaStreams) {
-                delegate.onStreamAvailable(params.getEndpointId(), params.getParticipantId(), params.getAlias(), params.getMediaTypes(), rtpReceiver);
+                delegate.onStreamAvailable(RTCBandwidthClient.this, params.getEndpointId(), params.getParticipantId(), params.getAlias(), params.getMediaTypes(), rtpReceiver);
             }
         });
 
