@@ -161,13 +161,13 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
 
                 @Override
                 public void onAddTrack(RtpReceiver rtpReceiver, MediaStream[] mediaStreams) {
-                    delegate.onStreamAvailable(result.getEndpointId(), result.getParticipantId(), alias, result.getMediaTypes(), rtpReceiver);
+                    delegate.onStreamAvailable(RTCBandwidthClient.this, result.getEndpointId(), result.getParticipantId(), alias, result.getMediaTypes(), rtpReceiver);
                 }
             });
 
             String streamId = UUID.randomUUID().toString();
 
-            RtpSender audioSender = audio ? localPeerConnection.addTrack(peerConnectionFactory.createAudioTrack(UUID.randomUUID().toString(), peerConnectionFactory.createAudioSource(null)), Arrays.asList(streamId)) : null;
+            RtpSender audioSender = audio ? localPeerConnection.addTrack(peerConnectionFactory.createAudioTrack(UUID.randomUUID().toString(), peerConnectionFactory.createAudioSource(new MediaConstraints())), Arrays.asList(streamId)) : null;
             RtpSender videoSender = video ? localPeerConnection.addTrack(peerConnectionFactory.createVideoTrack(UUID.randomUUID().toString(), peerConnectionFactory.createVideoSource(false)), Arrays.asList(streamId)) : null;
 
             localPeerConnections.put(result.getEndpointId(), localPeerConnection);
@@ -283,7 +283,7 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
 
     @Override
     public void onEndpointRemoved(Signaling signaling, EndpointRemovedParams params) {
-        delegate.onStreamUnavailable(params.getEndpointId());
+        delegate.onStreamUnavailable(RTCBandwidthClient.this, params.getEndpointId());
     }
 
     @Override
@@ -341,7 +341,7 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
 
             @Override
             public void onAddTrack(RtpReceiver rtpReceiver, MediaStream[] mediaStreams) {
-                delegate.onStreamAvailable(params.getEndpointId(), params.getParticipantId(), params.getAlias(), params.getMediaTypes(), rtpReceiver);
+                delegate.onStreamAvailable(RTCBandwidthClient.this, params.getEndpointId(), params.getParticipantId(), params.getAlias(), params.getMediaTypes(), rtpReceiver);
             }
         });
 
