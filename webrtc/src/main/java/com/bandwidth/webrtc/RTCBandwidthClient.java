@@ -167,7 +167,7 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
 
             String streamId = UUID.randomUUID().toString();
 
-            RtpSender audioSender = audio ? localPeerConnection.addTrack(peerConnectionFactory.createAudioTrack(UUID.randomUUID().toString(), peerConnectionFactory.createAudioSource(null)), Arrays.asList(streamId)) : null;
+            RtpSender audioSender = audio ? localPeerConnection.addTrack(peerConnectionFactory.createAudioTrack(UUID.randomUUID().toString(), peerConnectionFactory.createAudioSource(new MediaConstraints())), Arrays.asList(streamId)) : null;
             RtpSender videoSender = video ? localPeerConnection.addTrack(peerConnectionFactory.createVideoTrack(UUID.randomUUID().toString(), peerConnectionFactory.createVideoSource(false)), Arrays.asList(streamId)) : null;
 
             localPeerConnections.put(result.getEndpointId(), localPeerConnection);
