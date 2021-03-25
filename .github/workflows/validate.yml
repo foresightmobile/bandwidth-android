@@ -18,5 +18,5 @@ jobs:
       - name: Build using Gradle
         env:
           BANDWIDTH_URL_WEBRTC_SERVER: ${{ secrets.BANDWIDTH_URL_WEBRTC_SERVER }}
-          BANDWIDTH_URL_WEBRTC_CONFERENCE_SERVER: ${{ BANDWIDTH_URL_WEBRTC_CONFERENCE_SERVER }}
+          BANDWIDTH_URL_WEBRTC_CONFERENCE_SERVER: ${{ secrets.BANDWIDTH_URL_WEBRTC_CONFERENCE_SERVER }}
         run: ./gradlew build
