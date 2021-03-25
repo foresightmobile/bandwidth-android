@@ -17,15 +17,11 @@ import com.bandwidth.webrtc.signaling.rpc.transit.SetMediaPreferencesParams;
 import com.bandwidth.webrtc.signaling.rpc.transit.base.Notification;
 import com.bandwidth.webrtc.signaling.rpc.transit.base.Request;
 import com.bandwidth.webrtc.signaling.rpc.transit.base.Response;
+import com.bandwidth.webrtc.signaling.websockets.WebSocketException;
+import com.bandwidth.webrtc.signaling.websockets.WebSocketProvider;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
-import com.neovisionaries.ws.client.WebSocket;
-import com.neovisionaries.ws.client.WebSocketAdapter;
-import com.neovisionaries.ws.client.WebSocketException;
-import com.neovisionaries.ws.client.WebSocketFactory;
-import com.neovisionaries.ws.client.WebSocketFrame;
 
-import java.io.IOException;
 import java.lang.reflect.Type;
 import java.net.URI;
 import java.util.ArrayList;
@@ -37,9 +33,9 @@ import java.util.TimerTask;
 import java.util.UUID;
 
 public class SignalingClient implements Signaling {
+    private WebSocketProvider webSocketProvider;
     private SignalingDelegate delegate;
 
-    private WebSocket webSocket;
     private Map<String, QueueRequest> pendingQueueRequests = new HashMap<>();
 
     private OnConnectListener onConnectListener;
@@ -48,81 +44,75 @@ public class SignalingClient implements Signaling {
     private OnRequestToPublishListener onRequestToPublishListener;
     private OnSetMediaPreferencesListener onSetMediaPreferencesListener;
 
-    public SignalingClient(SignalingDelegate delegate) {
-        this.delegate = delegate;
+    public SignalingClient(WebSocketProvider webSocketProvider, SignalingDelegate delegate) {
+        this.webSocketProvider = webSocketProvider;
 
-
-    }
-
-    @Override
-    public void setOnConnectListener(OnConnectListener listener) {
-        onConnectListener = listener;
-    }
-
-    @Override
-    public void setOnDisconnectListener(OnDisconnectListener listener) {
-        onDisconnectListener = listener;
-    }
-
-    @Override
-    public void setOnOfferSdpListener(OnOfferSdpListener listener) {
-        onOfferSdpListener = listener;
-    }
-
-    @Override
-    public void setOnRequestToPublishListener(OnRequestToPublishListener listener) {
-        onRequestToPublishListener = listener;
-    }
-
-    @Override
-    public void setOnSetMediaPreferencesListener(OnSetMediaPreferencesListener listener) {
-        onSetMediaPreferencesListener = listener;
-    }
-
-    @Override
-    public void connect(URI uri) throws IOException {
-        webSocket = new WebSocketFactory().createSocket(uri);
-        webSocket.addListener(new WebSocketAdapter() {
-            @Override
-            public void onConnected(WebSocket websocket, Map<String, List<String>> headers) throws Exception {
-                if (onConnectListener != null) {
-                    onConnectListener.onConnect(SignalingClient.this);
-                }
-            }
-
-            @Override
-            public void onDisconnected(WebSocket websocket, WebSocketFrame serverCloseFrame, WebSocketFrame clientCloseFrame, boolean closedByServer) throws Exception {
-                if (onDisconnectListener != null) {
-                    onDisconnectListener.onDisconnect(SignalingClient.this);
-                }
-            }
-
-            @Override
-            public void onTextMessage(WebSocket websocket, String message) throws Exception {
-                // Determine if we're receiving a response or notification.
-                Response response = new Gson().fromJson(message, Response.class);
-                Notification notification = new Gson().fromJson(message, Notification.class);
-
-                if (response != null) {
-                    handleResponse(message, response.getId());
-                } else if (notification != null) {
-                    handleNotification(message, notification);
-                }
-
-                System.out.println(message);
+        webSocketProvider.setOnOpenListener(onOpenWebSocketProvider -> {
+            if (onConnectListener != null) {
+                onConnectListener.onConnect(SignalingClient.this);
             }
         });
 
-        try {
-            webSocket.connect();
-        } catch (WebSocketException e) {
-            e.printStackTrace();
-        }
+        webSocketProvider.setOnCloseListener(onCloseWebSocketProvider -> {
+            if (onDisconnectListener != null) {
+                onDisconnectListener.onDisconnect(SignalingClient.this);
+            }
+        });
+
+        webSocketProvider.setOnMessageListener((onMessageWebSocketProvider, message) -> {
+            // Determine if we're receiving a response or notification.
+            Response response = new Gson().fromJson(message, Response.class);
+            Notification notification = new Gson().fromJson(message, Notification.class);
+
+            if (response != null) {
+                handleResponse(message, response.getId());
+            } else if (notification != null) {
+                handleNotification(message, notification);
+            }
+
+            System.out.println(message);
+        });
+
+        webSocketProvider.setOnErrorListener((onErrorWebSocketProvider, throwable) -> {
+
+        });
+
+        this.delegate = delegate;
+    }
+
+    @Override
+    public void setOnConnectListener(OnConnectListener onConnectListener) {
+        this.onConnectListener = onConnectListener;
+    }
+
+    @Override
+    public void setOnDisconnectListener(OnDisconnectListener onDisconnectListener) {
+        this.onDisconnectListener = onDisconnectListener;
+    }
+
+    @Override
+    public void setOnOfferSdpListener(OnOfferSdpListener onOfferSdpListener) {
+        this.onOfferSdpListener = onOfferSdpListener;
+    }
+
+    @Override
+    public void setOnRequestToPublishListener(OnRequestToPublishListener onRequestToPublishListener) {
+        this.onRequestToPublishListener = onRequestToPublishListener;
+    }
+
+    @Override
+    public void setOnSetMediaPreferencesListener(OnSetMediaPreferencesListener onSetMediaPreferencesListener) {
+        this.onSetMediaPreferencesListener = onSetMediaPreferencesListener;
+    }
+
+    @Override
+    public void connect() throws WebSocketException {
+        webSocketProvider.open();
     }
 
     @Override
     public void disconnect() {
-        webSocket.sendClose();
+        webSocketProvider.close();
     }
 
     @Override
@@ -181,7 +171,7 @@ public class SignalingClient implements Signaling {
         System.out.println(json);
 
         // Send our request to the moon (or signaling server).
-        webSocket.sendText(json);
+        webSocketProvider.sendMessage(json);
     }
 
     private void sendNotification(Notification notification) {
@@ -190,10 +180,10 @@ public class SignalingClient implements Signaling {
         System.out.println(json);
 
         // Send our notification to the moon (or signaling server).
-        webSocket.sendText(json);
+        webSocketProvider.sendMessage(json);
     }
 
-    private void handleResponse(String message, String id) throws NullSessionException {
+    private void handleResponse(String message, String id) {
         QueueRequest pendingQueueRequest = pendingQueueRequests.get(id);
         pendingQueueRequest.getTimer().cancel();
 
@@ -202,7 +192,11 @@ public class SignalingClient implements Signaling {
         switch (pendingQueueRequest.getMethod()) {
             case "setMediaPreferences":
                 if (onSetMediaPreferencesListener != null) {
-                    onSetMediaPreferencesListener.onSetMediaPreferences(this);
+                    try {
+                        onSetMediaPreferencesListener.onSetMediaPreferences(this);
+                    } catch (NullSessionException e) {
+                        e.printStackTrace();
+                    }
                 }
                 break;
             case "requestToPublish":

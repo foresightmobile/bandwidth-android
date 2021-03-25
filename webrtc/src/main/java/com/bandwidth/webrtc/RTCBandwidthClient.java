@@ -13,6 +13,9 @@ import com.bandwidth.webrtc.signaling.SignalingDelegate;
 import com.bandwidth.webrtc.signaling.rpc.transit.AddIceCandidateParams;
 import com.bandwidth.webrtc.signaling.rpc.transit.EndpointRemovedParams;
 import com.bandwidth.webrtc.signaling.rpc.transit.SdpNeededParams;
+import com.bandwidth.webrtc.signaling.websockets.NeoVisionariesWebSocket;
+import com.bandwidth.webrtc.signaling.websockets.WebSocketException;
+import com.bandwidth.webrtc.signaling.websockets.WebSocketProvider;
 
 import org.webrtc.DataChannel;
 import org.webrtc.DefaultVideoDecoderFactory;
@@ -40,23 +43,27 @@ import java.util.Map;
 import java.util.UUID;
 
 public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
-    private RTCBandwidthDelegate delegate;
-    private Signaling signaling;
+    private final RTCBandwidthDelegate delegate;
+    private final Signaling signaling;
 
-    private PeerConnectionFactory peerConnectionFactory;
-    private PeerConnection.RTCConfiguration configuration;
+    private final PeerConnectionFactory peerConnectionFactory;
+    private final PeerConnection.RTCConfiguration configuration;
 
-    private Map<String, PeerConnection> localPeerConnections;
-    private Map<String, PeerConnection> remotePeerConnections;
+    private final Map<String, PeerConnection> localPeerConnections;
+    private final Map<String, PeerConnection> remotePeerConnections;
 
     private OnConnectListener onConnectListener;
     private OnPublishListener onPublishListener;
     private OnNegotiateSdpListener onNegotiateSdpListener;
 
-    public RTCBandwidthClient(Context context, RTCBandwidthDelegate delegate) {
+    public RTCBandwidthClient(Context context, RTCBandwidthDelegate delegate, URI uri) throws IOException {
+            this(context, delegate, new NeoVisionariesWebSocket(uri));
+    }
+
+    public RTCBandwidthClient(Context context, RTCBandwidthDelegate delegate, WebSocketProvider webSocketProvider) {
         this.delegate = delegate;
 
-        signaling = new SignalingClient(this);
+        signaling = new SignalingClient(webSocketProvider, this);
 
 //        EglBase eglBase = EglBase.create();
 
@@ -95,14 +102,14 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
     }
 
     @Override
-    public void connect(URI uri) throws IOException, ConnectionException {
+    public void connect(URI uri) throws WebSocketException {
         signaling.setOnConnectListener(signaling -> {
             if (onConnectListener != null) {
                 onConnectListener.onConnect();
             }
         });
 
-        signaling.connect(uri);
+        signaling.connect();
     }
 
     @Override
