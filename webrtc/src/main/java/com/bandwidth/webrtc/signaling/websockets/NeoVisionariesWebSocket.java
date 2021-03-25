@@ -93,8 +93,6 @@ public class NeoVisionariesWebSocket implements WebSocketProvider {
         } catch (IOException | WebSocketException e) {
             throw new ConnectionException("Could not connect to signaling server.", e);
         }
-
-        addListeners();
     }
 
     @Override
