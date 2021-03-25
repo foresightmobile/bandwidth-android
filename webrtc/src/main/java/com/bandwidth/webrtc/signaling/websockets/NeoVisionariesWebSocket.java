@@ -28,46 +28,6 @@ public class NeoVisionariesWebSocket implements WebSocketProvider {
 
     }
 
-    private void addListeners() {
-        webSocket.addListener(new WebSocketAdapter() {
-            @Override
-            public void onConnected(WebSocket websocket, Map<String, List<String>> headers) throws Exception {
-                super.onConnected(websocket, headers);
-
-                if (onOpenListener != null) {
-                    onOpenListener.onOpen(NeoVisionariesWebSocket.this);
-                }
-            }
-
-            @Override
-            public void onDisconnected(WebSocket websocket, WebSocketFrame serverCloseFrame, WebSocketFrame clientCloseFrame, boolean closedByServer) throws Exception {
-                super.onDisconnected(websocket, serverCloseFrame, clientCloseFrame, closedByServer);
-
-                if (onCloseListener != null) {
-                    onCloseListener.onClose(NeoVisionariesWebSocket.this);
-                }
-            }
-
-            @Override
-            public void onTextMessage(WebSocket websocket, String message) throws Exception {
-                super.onTextMessage(websocket, message);
-
-                if (onMessageListener != null) {
-                    onMessageListener.onMessage(NeoVisionariesWebSocket.this, message);
-                }
-            }
-
-            @Override
-            public void onError(WebSocket websocket, WebSocketException cause) throws Exception {
-                super.onError(websocket, cause);
-
-                if (onErrorListener != null) {
-                    onErrorListener.onError(NeoVisionariesWebSocket.this, cause);
-                }
-            }
-        });
-    }
-
     @Override
     public void setOnOpenListener(OnOpenListener onOpenListener) {
         this.onOpenListener = onOpenListener;
@@ -92,6 +52,43 @@ public class NeoVisionariesWebSocket implements WebSocketProvider {
     public void open(URI uri) throws ConnectionException {
         try {
             webSocket = new WebSocketFactory().createSocket(uri);
+            webSocket.addListener(new WebSocketAdapter() {
+                @Override
+                public void onConnected(WebSocket websocket, Map<String, List<String>> headers) throws Exception {
+                    super.onConnected(websocket, headers);
+
+                    if (onOpenListener != null) {
+                        onOpenListener.onOpen(NeoVisionariesWebSocket.this);
+                    }
+                }
+
+                @Override
+                public void onDisconnected(WebSocket websocket, WebSocketFrame serverCloseFrame, WebSocketFrame clientCloseFrame, boolean closedByServer) throws Exception {
+                    super.onDisconnected(websocket, serverCloseFrame, clientCloseFrame, closedByServer);
+
+                    if (onCloseListener != null) {
+                        onCloseListener.onClose(NeoVisionariesWebSocket.this);
+                    }
+                }
+
+                @Override
+                public void onTextMessage(WebSocket websocket, String message) throws Exception {
+                    super.onTextMessage(websocket, message);
+
+                    if (onMessageListener != null) {
+                        onMessageListener.onMessage(NeoVisionariesWebSocket.this, message);
+                    }
+                }
+
+                @Override
+                public void onError(WebSocket websocket, WebSocketException cause) throws Exception {
+                    super.onError(websocket, cause);
+
+                    if (onErrorListener != null) {
+                        onErrorListener.onError(NeoVisionariesWebSocket.this, cause);
+                    }
+                }
+            });
             webSocket.connect();
         } catch (IOException | WebSocketException e) {
             throw new ConnectionException("Could not connect to signaling server.", e);
