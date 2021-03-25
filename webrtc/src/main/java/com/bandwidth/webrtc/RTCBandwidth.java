@@ -13,6 +13,6 @@ public interface RTCBandwidth {
     void setOnConnectListener(OnConnectListener listener);
     void setOnPublishListener(OnPublishListener listener);
 
-    void connect(URI uri) throws WebSocketException;
+    void connect(URI uri) throws ConnectionException;
     void publish(Boolean audio, Boolean video, String alias) throws NullSessionException;
 }

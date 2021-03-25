@@ -56,8 +56,8 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
     private OnPublishListener onPublishListener;
     private OnNegotiateSdpListener onNegotiateSdpListener;
 
-    public RTCBandwidthClient(Context context, RTCBandwidthDelegate delegate, URI uri) throws IOException {
-            this(context, delegate, new NeoVisionariesWebSocket(uri));
+    public RTCBandwidthClient(Context context, RTCBandwidthDelegate delegate) {
+            this(context, delegate, new NeoVisionariesWebSocket());
     }
 
     public RTCBandwidthClient(Context context, RTCBandwidthDelegate delegate, WebSocketProvider webSocketProvider) {
@@ -102,14 +102,14 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
     }
 
     @Override
-    public void connect(URI uri) throws WebSocketException {
+    public void connect(URI uri) throws ConnectionException {
         signaling.setOnConnectListener(signaling -> {
             if (onConnectListener != null) {
                 onConnectListener.onConnect();
             }
         });
 
-        signaling.connect();
+        signaling.connect(uri);
     }
 
     @Override

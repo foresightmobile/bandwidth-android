@@ -17,7 +17,7 @@ public interface Signaling {
     void setOnRequestToPublishListener(OnRequestToPublishListener listener);
     void setOnSetMediaPreferencesListener(OnSetMediaPreferencesListener listener);
 
-    void connect() throws WebSocketException;
+    void connect(URI uri) throws ConnectionException;
     void disconnect();
     void offerSdp(String endpointId, String sdp) throws NullSessionException;
     void requestToPublish(Boolean audio, Boolean video, String alias) throws NullSessionException;

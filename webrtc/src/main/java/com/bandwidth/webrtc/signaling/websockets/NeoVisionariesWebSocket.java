@@ -1,5 +1,6 @@
 package com.bandwidth.webrtc.signaling.websockets;
 
+import com.bandwidth.webrtc.signaling.ConnectionException;
 import com.bandwidth.webrtc.signaling.websockets.listeners.OnCloseListener;
 import com.bandwidth.webrtc.signaling.websockets.listeners.OnErrorListener;
 import com.bandwidth.webrtc.signaling.websockets.listeners.OnMessageListener;
@@ -16,16 +17,18 @@ import java.util.List;
 import java.util.Map;
 
 public class NeoVisionariesWebSocket implements WebSocketProvider {
-    private final WebSocket webSocket;
+    private WebSocket webSocket;
 
     private OnOpenListener onOpenListener;
     private OnCloseListener onCloseListener;
     private OnMessageListener onMessageListener;
     private OnErrorListener onErrorListener;
 
-    public NeoVisionariesWebSocket(URI uri) throws IOException {
-        webSocket = new WebSocketFactory().createSocket(uri);
+    public NeoVisionariesWebSocket() {
 
+    }
+
+    private void addListeners() {
         webSocket.addListener(new WebSocketAdapter() {
             @Override
             public void onConnected(WebSocket websocket, Map<String, List<String>> headers) throws Exception {
@@ -86,12 +89,15 @@ public class NeoVisionariesWebSocket implements WebSocketProvider {
     }
 
     @Override
-    public void open() throws com.bandwidth.webrtc.signaling.websockets.WebSocketException {
+    public void open(URI uri) throws ConnectionException {
         try {
+            webSocket = new WebSocketFactory().createSocket(uri);
             webSocket.connect();
-        } catch (WebSocketException e) {
-            throw new com.bandwidth.webrtc.signaling.websockets.WebSocketException("Could not connect to signaling server.", e);
+        } catch (IOException | WebSocketException e) {
+            throw new ConnectionException("Could not connect to signaling server.", e);
         }
+
+        addListeners();
     }
 
     @Override

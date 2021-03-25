@@ -106,8 +106,8 @@ public class SignalingClient implements Signaling {
     }
 
     @Override
-    public void connect() throws WebSocketException {
-        webSocketProvider.open();
+    public void connect(URI uri) throws ConnectionException {
+        webSocketProvider.open(uri);
     }
 
     @Override
