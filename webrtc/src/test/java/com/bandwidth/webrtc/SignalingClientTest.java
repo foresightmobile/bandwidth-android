@@ -20,15 +20,24 @@ public class SignalingClientTest {
         SignalingDelegate mockedSignalingDelegate = mock(SignalingDelegate.class);
 
         Signaling signaling = new SignalingClient(mockedWebSocketProvider, mockedSignalingDelegate);
-
-        try {
-            signaling.offerSdp("123-456", "offer-sdp");
-        } catch (NullSessionException e) {
-            e.printStackTrace();
-        }
+        signaling.offerSdp("123-456", "offer-sdp");
 
         // Pattern matching for an sdp offer, required due to each request having a unique id.
         String pattern = "^\\{\"id\":\"[\\w\\d-]+\",\"jsonrpc\":\"2.0\",\"method\":\"offerSdp\",\"params\":\\{\"endpointId\":\"123-456\",\"sdpOffer\":\"offer-sdp\"\\}\\}$";
+
+        verify(mockedWebSocketProvider, times(1)).sendMessage(matches(pattern));
+    }
+
+    @Test
+    public void requestToPublish() {
+        WebSocketProvider mockedWebSocketProvider = mock(WebSocketProvider.class);
+        SignalingDelegate mockedSignalingDelegate = mock(SignalingDelegate.class);
+
+        Signaling signaling = new SignalingClient(mockedWebSocketProvider, mockedSignalingDelegate);
+        signaling.requestToPublish(true, true, "signaling-alias");
+
+        // Pattern matching for an sdp offer, required due to each request having a unique id.
+        String pattern = "^\\{\"id\":\"[\\w\\d-]+\",\"jsonrpc\":\"2.0\",\"method\":\"requestToPublish\",\"params\":\\{\"mediaTypes\":\\[\"AUDIO\",\"VIDEO\"\\],\"alias\":\"signaling-alias\"\\}\\}$";
 
         verify(mockedWebSocketProvider, times(1)).sendMessage(matches(pattern));
     }
