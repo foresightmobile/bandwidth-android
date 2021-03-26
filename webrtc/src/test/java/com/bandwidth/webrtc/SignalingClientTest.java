@@ -29,7 +29,7 @@ public class SignalingClientTest {
     }
 
     @Test
-    public void requestToPublish() {
+    public void shouldRequestToPublish() {
         WebSocketProvider mockedWebSocketProvider = mock(WebSocketProvider.class);
         SignalingDelegate mockedSignalingDelegate = mock(SignalingDelegate.class);
 
@@ -43,7 +43,7 @@ public class SignalingClientTest {
     }
 
     @Test
-    public void setMediaPreferences() {
+    public void shouldSetMediaPreferences() {
         WebSocketProvider mockedWebSocketProvider = mock(WebSocketProvider.class);
         SignalingDelegate mockedSignalingDelegate = mock(SignalingDelegate.class);
 
