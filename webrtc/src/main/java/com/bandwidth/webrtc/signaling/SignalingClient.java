@@ -124,7 +124,7 @@ public class SignalingClient implements Signaling {
     }
 
     @Override
-    public void requestToPublish(Boolean audio, Boolean video, String alias) throws NullSessionException {
+    public void requestToPublish(Boolean audio, Boolean video, String alias) {
         List<String> mediaTypes = new ArrayList<>();
 
         if (audio) {

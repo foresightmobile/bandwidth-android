@@ -20,6 +20,6 @@ public interface Signaling {
     void connect(URI uri) throws ConnectionException;
     void disconnect();
     void offerSdp(String endpointId, String sdp) throws NullSessionException;
-    void requestToPublish(Boolean audio, Boolean video, String alias) throws NullSessionException;
-    void setMediaPreferences() throws NullSessionException;
+    void requestToPublish(Boolean audio, Boolean video, String alias);
+    void setMediaPreferences();
 }
