@@ -41,4 +41,18 @@ public class SignalingClientTest {
 
         verify(mockedWebSocketProvider, times(1)).sendMessage(matches(pattern));
     }
+
+    @Test
+    public void setMediaPreferences() {
+        WebSocketProvider mockedWebSocketProvider = mock(WebSocketProvider.class);
+        SignalingDelegate mockedSignalingDelegate = mock(SignalingDelegate.class);
+
+        Signaling signaling = new SignalingClient(mockedWebSocketProvider, mockedSignalingDelegate);
+        signaling.setMediaPreferences();
+
+        // Pattern matching for an sdp offer, required due to each request having a unique id.
+        String pattern = "^\\{\"id\":\"[\\w\\d-]+\",\"jsonrpc\":\"2.0\",\"method\":\"setMediaPreferences\",\"params\":\\{\"protocol\":\"WEB_RTC\",\"aggregationType\":\"NONE\",\"sendRecv\":false\\}\\}$";
+
+        verify(mockedWebSocketProvider, times(1)).sendMessage(matches(pattern));
+    }
 }
