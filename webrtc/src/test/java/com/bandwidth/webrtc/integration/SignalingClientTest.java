@@ -1,76 +1,58 @@
 package com.bandwidth.webrtc.integration;
 
 import com.bandwidth.webrtc.integration.utils.TestSignalingDelegate;
+import com.bandwidth.webrtc.integration.utils.app.Conference;
 import com.bandwidth.webrtc.signaling.ConnectionException;
 import com.bandwidth.webrtc.signaling.SignalingClient;
 import com.bandwidth.webrtc.signaling.SignalingDelegate;
-import com.google.gson.Gson;
+import com.bandwidth.webrtc.signaling.websockets.NeoVisionariesWebSocket;
 
+import org.junit.Assert;
 import org.junit.Test;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.URL;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-
-import javax.net.ssl.HttpsURLConnection;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class SignalingClientTest {
-
-    private class ParticipantsResponse {
-        private String deviceToken;
-
-        public String getDeviceToken() {
-            return deviceToken;
-        }
-    }
-
-    private String getDeviceToken() throws IOException {
-        String path = System.getenv("BANDWIDTH_URL_WEBRTC_TOKEN");
-        URL url = new URL(path);
-        HttpsURLConnection connection = (HttpsURLConnection) url.openConnection();
-        connection.setRequestMethod("POST");
-        connection.setDoOutput(true);
-        connection.connect();
-
-        BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-        StringBuilder stringBuilder = new StringBuilder();
-
-        String output;
-        while ((output = bufferedReader.readLine()) != null) {
-            stringBuilder.append(output);
-        }
-        output = stringBuilder.toString();
-
-        ParticipantsResponse response = new Gson().fromJson(output, ParticipantsResponse.class);
-        return response.getDeviceToken();
-    }
-
     CountDownLatch lock = new CountDownLatch(1);
 
+    final String webRtcServerPath = System.getenv("BANDWIDTH_URL_WEBRTC_SERVER");
+    final String conferenceServerPath = System.getenv("BANDWIDTH_URL_WEBRTC_CONFERENCE_SERVER");
+
     @Test
-    public void shouldConnect() throws IOException, URISyntaxException, InterruptedException, ConnectionException {
-        String deviceToken = getDeviceToken();
+    public void shouldConnectThenDisconnect() throws IOException, URISyntaxException, InterruptedException, ConnectionException {
+        String deviceToken = Conference.getInstance().requestDeviceToken(conferenceServerPath);
         String uniqueId = UUID.randomUUID().toString();
 
-        String basePath = System.getenv("BANDWIDTH_URL_WEBRTC");
-        String combinedPath = String.format("%s?token=%s&uniqueId=%s", basePath, deviceToken, uniqueId);
-        URI uri = new URI(combinedPath);
+        String path = String.format("%s?token=%s&uniqueId=%s", webRtcServerPath, deviceToken, uniqueId);
+        URI uri = new URI(path);
 
         SignalingDelegate delegate = new TestSignalingDelegate();
-        SignalingClient client = new SignalingClient(delegate);
+        SignalingClient client = new SignalingClient(new NeoVisionariesWebSocket(), delegate);
+
+        AtomicReference<Boolean> hasConnected = new AtomicReference<>(false);
+        AtomicReference<Boolean> hasDisconnected = new AtomicReference<>(false);
 
         client.setOnConnectListener(signaling -> {
+            hasConnected.set(true);
+            client.disconnect();
+        });
+
+        client.setOnDisconnectListener(signaling -> {
+            hasDisconnected.set(true);
             lock.countDown();
         });
 
         client.connect(uri);
 
         lock.await(5000, TimeUnit.MILLISECONDS);
+
+        Assert.assertTrue(hasConnected.get());
+        Assert.assertTrue(hasDisconnected.get());
     }
 }
