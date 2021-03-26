@@ -31,7 +31,7 @@ android {
 tasks.withType(Test) {
     afterSuite { suite, result ->
         if (!suite.parent)
-            println "${result.testCount} tests"
+            println "${result.resultType} (${result.testCount} tests, ${result.failedTestCount} failures)"
     }
 }
 
