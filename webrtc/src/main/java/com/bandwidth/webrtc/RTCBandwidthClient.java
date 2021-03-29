@@ -16,6 +16,7 @@ import com.bandwidth.webrtc.signaling.rpc.transit.SdpNeededParams;
 import com.bandwidth.webrtc.signaling.websockets.NeoVisionariesWebSocket;
 import com.bandwidth.webrtc.signaling.websockets.WebSocketProvider;
 
+import org.webrtc.AudioSource;
 import org.webrtc.DataChannel;
 import org.webrtc.DefaultVideoDecoderFactory;
 import org.webrtc.DefaultVideoEncoderFactory;
@@ -30,6 +31,7 @@ import org.webrtc.SdpObserver;
 import org.webrtc.SessionDescription;
 import org.webrtc.VideoDecoderFactory;
 import org.webrtc.VideoEncoderFactory;
+import org.webrtc.VideoSource;
 
 import java.net.URI;
 import java.util.ArrayList;
@@ -171,13 +173,16 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
 
             String streamId = UUID.randomUUID().toString();
 
-            RtpSender audioSender = audio ? localPeerConnection.addTrack(peerConnectionFactory.createAudioTrack(UUID.randomUUID().toString(), peerConnectionFactory.createAudioSource(new MediaConstraints())), Arrays.asList(streamId)) : null;
-            RtpSender videoSender = video ? localPeerConnection.addTrack(peerConnectionFactory.createVideoTrack(UUID.randomUUID().toString(), peerConnectionFactory.createVideoSource(false)), Arrays.asList(streamId)) : null;
+            AudioSource audioSource = peerConnectionFactory.createAudioSource(new MediaConstraints());
+            VideoSource videoSource = peerConnectionFactory.createVideoSource(false);
+
+            RtpSender audioSender = audio ? localPeerConnection.addTrack(peerConnectionFactory.createAudioTrack(UUID.randomUUID().toString(), audioSource), Arrays.asList(streamId)) : null;
+            RtpSender videoSender = video ? localPeerConnection.addTrack(peerConnectionFactory.createVideoTrack(UUID.randomUUID().toString(), videoSource), Arrays.asList(streamId)) : null;
 
             localPeerConnections.put(result.getEndpointId(), localPeerConnection);
 
             setOnNegotiateSdpListener(() -> {
-                onPublishListener.onPublish(result.getMediaTypes(), audioSender, videoSender);
+                onPublishListener.onPublish(result.getMediaTypes(), audioSender, audioSource, videoSender, videoSource);
             });
 
             negotiateSdp(result.getEndpointId(), result.getDirection(), result.getMediaTypes(), localPeerConnection);
