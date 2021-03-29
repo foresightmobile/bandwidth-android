@@ -20,6 +20,7 @@ import org.webrtc.AudioSource;
 import org.webrtc.DataChannel;
 import org.webrtc.DefaultVideoDecoderFactory;
 import org.webrtc.DefaultVideoEncoderFactory;
+import org.webrtc.EglBase;
 import org.webrtc.IceCandidate;
 import org.webrtc.MediaConstraints;
 import org.webrtc.MediaStream;
@@ -55,19 +56,19 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
     private OnPublishListener onPublishListener;
     private OnNegotiateSdpListener onNegotiateSdpListener;
 
-    public RTCBandwidthClient(Context context, RTCBandwidthDelegate delegate) {
-            this(context, delegate, new NeoVisionariesWebSocket());
+    public RTCBandwidthClient(Context context, EglBase.Context eglContext, RTCBandwidthDelegate delegate) {
+            this(context, eglContext, delegate, new NeoVisionariesWebSocket());
     }
 
-    public RTCBandwidthClient(Context context, RTCBandwidthDelegate delegate, WebSocketProvider webSocketProvider) {
+    public RTCBandwidthClient(Context context, EglBase.Context eglContext, RTCBandwidthDelegate delegate, WebSocketProvider webSocketProvider) {
         this.delegate = delegate;
 
         signaling = new SignalingClient(webSocketProvider, this);
 
 //        EglBase eglBase = EglBase.create();
 
-        VideoEncoderFactory videoEncoderFactory = new DefaultVideoEncoderFactory(null, true, true);
-        VideoDecoderFactory videoDecoderFactory = new DefaultVideoDecoderFactory(null);
+        VideoEncoderFactory videoEncoderFactory = new DefaultVideoEncoderFactory(eglContext, true, true);
+        VideoDecoderFactory videoDecoderFactory = new DefaultVideoDecoderFactory(eglContext);
 
         PeerConnectionFactory.InitializationOptions initializationOptions = PeerConnectionFactory.InitializationOptions.builder(context)
                 .createInitializationOptions();
