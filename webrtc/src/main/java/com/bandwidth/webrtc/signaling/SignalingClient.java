@@ -116,7 +116,7 @@ public class SignalingClient implements Signaling {
     }
 
     @Override
-    public void offerSdp(String endpointId, String sdp) throws NullSessionException {
+    public void offerSdp(String endpointId, String sdp) {
         OfferSdpParams params = new OfferSdpParams(endpointId, sdp);
         Request request = new Request<>(UUID.randomUUID().toString(), "2.0", "offerSdp", params);
 
@@ -124,7 +124,7 @@ public class SignalingClient implements Signaling {
     }
 
     @Override
-    public void requestToPublish(Boolean audio, Boolean video, String alias) throws NullSessionException {
+    public void requestToPublish(Boolean audio, Boolean video, String alias) {
         List<String> mediaTypes = new ArrayList<>();
 
         if (audio) {
@@ -142,14 +142,14 @@ public class SignalingClient implements Signaling {
     }
 
     @Override
-    public void setMediaPreferences() throws NullSessionException {
+    public void setMediaPreferences() {
         SetMediaPreferencesParams params = new SetMediaPreferencesParams("WEB_RTC", "NONE", false);
         Request request = new Request<>(UUID.randomUUID().toString(), "2.0", "setMediaPreferences", params);
 
         sendRequest(request);
     }
 
-    private void sendRequest(Request request) throws NullSessionException {
+    private void sendRequest(Request request) {
         sendRequest(request, 5000L);
     }
 
