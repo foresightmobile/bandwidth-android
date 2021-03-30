@@ -114,6 +114,9 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
 
     @Override
     public void publish(Boolean audio, Boolean video, String alias) throws NullSessionException {
+        AudioSource audioSource = peerConnectionFactory.createAudioSource(new MediaConstraints());
+        VideoSource videoSource = peerConnectionFactory.createVideoSource(false);
+
         signaling.setOnRequestToPublishListener((signaling, result) -> {
             PeerConnection localPeerConnection = peerConnectionFactory.createPeerConnection(configuration, new PeerConnection.Observer() {
                 @Override
@@ -173,9 +176,6 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
             });
 
             String streamId = UUID.randomUUID().toString();
-
-            AudioSource audioSource = peerConnectionFactory.createAudioSource(new MediaConstraints());
-            VideoSource videoSource = peerConnectionFactory.createVideoSource(false);
 
             RtpSender audioSender = audio ? localPeerConnection.addTrack(peerConnectionFactory.createAudioTrack(UUID.randomUUID().toString(), audioSource), Arrays.asList(streamId)) : null;
             RtpSender videoSender = video ? localPeerConnection.addTrack(peerConnectionFactory.createVideoTrack(UUID.randomUUID().toString(), videoSource), Arrays.asList(streamId)) : null;
