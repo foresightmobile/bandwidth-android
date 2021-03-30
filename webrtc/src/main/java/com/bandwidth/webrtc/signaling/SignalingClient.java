@@ -15,7 +15,6 @@ import com.bandwidth.webrtc.signaling.rpc.transit.RequestToPublishParams;
 import com.bandwidth.webrtc.signaling.rpc.transit.RequestToPublishResult;
 import com.bandwidth.webrtc.signaling.rpc.transit.SdpNeededParams;
 import com.bandwidth.webrtc.signaling.rpc.transit.SetMediaPreferencesParams;
-import com.bandwidth.webrtc.signaling.rpc.transit.UnpublishParams;
 import com.bandwidth.webrtc.signaling.rpc.transit.base.Notification;
 import com.bandwidth.webrtc.signaling.rpc.transit.base.Request;
 import com.bandwidth.webrtc.signaling.rpc.transit.base.Response;
@@ -156,14 +155,6 @@ public class SignalingClient implements Signaling {
         Request request = new Request<>(UUID.randomUUID().toString(), "2.0", "setMediaPreferences", params);
 
         sendRequest(request);
-    }
-
-    @Override
-    public void unpublish(String endpointId) {
-        UnpublishParams params = new UnpublishParams(endpointId);
-        Notification<UnpublishParams> notification = new Notification<>("2.0", "unpublish", params);
-
-        sendNotification(notification);
     }
 
     private void sendRequest(Request request) {
