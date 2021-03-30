@@ -7,6 +7,7 @@ import com.bandwidth.webrtc.signaling.listeners.OnRequestToPublishListener;
 import com.bandwidth.webrtc.signaling.listeners.OnSetMediaPreferencesListener;
 import com.bandwidth.webrtc.signaling.rpc.QueueRequest;
 import com.bandwidth.webrtc.signaling.rpc.transit.AddIceCandidateParams;
+import com.bandwidth.webrtc.signaling.rpc.transit.AddIceCandidateSendParams;
 import com.bandwidth.webrtc.signaling.rpc.transit.EndpointRemovedParams;
 import com.bandwidth.webrtc.signaling.rpc.transit.OfferSdpParams;
 import com.bandwidth.webrtc.signaling.rpc.transit.OfferSdpResult;
@@ -17,7 +18,6 @@ import com.bandwidth.webrtc.signaling.rpc.transit.SetMediaPreferencesParams;
 import com.bandwidth.webrtc.signaling.rpc.transit.base.Notification;
 import com.bandwidth.webrtc.signaling.rpc.transit.base.Request;
 import com.bandwidth.webrtc.signaling.rpc.transit.base.Response;
-import com.bandwidth.webrtc.signaling.websockets.WebSocketException;
 import com.bandwidth.webrtc.signaling.websockets.WebSocketProvider;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -139,6 +139,14 @@ public class SignalingClient implements Signaling {
         Request<RequestToPublishParams> request = new Request<>(UUID.randomUUID().toString(), "2.0", "requestToPublish", params);
 
         sendRequest(request);
+    }
+
+    @Override
+    public void sendIceCandidate(String endpointId, String sdp, Integer sdpMLineIndex, String sdpMid) {
+        AddIceCandidateSendParams params = new AddIceCandidateSendParams(endpointId, sdp, sdpMLineIndex, sdpMid);
+        Notification<AddIceCandidateSendParams> notification = new Notification<>("2.0", "addIceCandidate", params);
+
+        sendNotification(notification);
     }
 
     @Override

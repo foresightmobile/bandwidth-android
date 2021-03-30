@@ -21,5 +21,6 @@ public interface Signaling {
     void disconnect();
     void offerSdp(String endpointId, String sdp);
     void requestToPublish(Boolean audio, Boolean video, String alias);
+    void sendIceCandidate(String endpointId, String sdp, Integer sdpMLineIndex, String sdpMid);
     void setMediaPreferences();
 }

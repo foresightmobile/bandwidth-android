@@ -317,7 +317,7 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
 
             @Override
             public void onIceCandidate(IceCandidate iceCandidate) {
-
+                signaling.sendIceCandidate(params.getEndpointId(), iceCandidate.sdp, iceCandidate.sdpMLineIndex, iceCandidate.sdpMid);
             }
 
             @Override
