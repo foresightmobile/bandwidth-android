@@ -14,5 +14,5 @@ public interface RTCBandwidth {
     void setOnPublishListener(OnPublishListener listener);
 
     void connect(URI uri) throws ConnectionException;
-    void publish(Boolean audio, Boolean video, String alias) throws NullSessionException;
+    void publish(Boolean audio, Boolean video, String alias);
 }

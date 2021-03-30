@@ -17,6 +17,7 @@ import com.bandwidth.webrtc.signaling.websockets.NeoVisionariesWebSocket;
 import com.bandwidth.webrtc.signaling.websockets.WebSocketProvider;
 
 import org.webrtc.AudioSource;
+import org.webrtc.AudioTrack;
 import org.webrtc.DataChannel;
 import org.webrtc.DefaultVideoDecoderFactory;
 import org.webrtc.DefaultVideoEncoderFactory;
@@ -33,6 +34,7 @@ import org.webrtc.SessionDescription;
 import org.webrtc.VideoDecoderFactory;
 import org.webrtc.VideoEncoderFactory;
 import org.webrtc.VideoSource;
+import org.webrtc.VideoTrack;
 
 import java.net.URI;
 import java.util.ArrayList;
@@ -113,9 +115,12 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
     }
 
     @Override
-    public void publish(Boolean audio, Boolean video, String alias) throws NullSessionException {
+    public void publish(Boolean audio, Boolean video, String alias) {
         AudioSource audioSource = peerConnectionFactory.createAudioSource(new MediaConstraints());
+        AudioTrack audioTrack = peerConnectionFactory.createAudioTrack(UUID.randomUUID().toString(), audioSource);
+
         VideoSource videoSource = peerConnectionFactory.createVideoSource(false);
+        VideoTrack videoTrack = peerConnectionFactory.createVideoTrack(UUID.randomUUID().toString(), videoSource);
 
         signaling.setOnRequestToPublishListener((signaling, result) -> {
             PeerConnection localPeerConnection = peerConnectionFactory.createPeerConnection(configuration, new PeerConnection.Observer() {
@@ -177,8 +182,8 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
 
             String streamId = UUID.randomUUID().toString();
 
-            RtpSender audioSender = audio ? localPeerConnection.addTrack(peerConnectionFactory.createAudioTrack(UUID.randomUUID().toString(), audioSource), Arrays.asList(streamId)) : null;
-            RtpSender videoSender = video ? localPeerConnection.addTrack(peerConnectionFactory.createVideoTrack(UUID.randomUUID().toString(), videoSource), Arrays.asList(streamId)) : null;
+            RtpSender audioSender = audio ? localPeerConnection.addTrack(audioTrack, Arrays.asList(streamId)) : null;
+            RtpSender videoSender = video ? localPeerConnection.addTrack(videoTrack, Arrays.asList(streamId)) : null;
 
             localPeerConnections.put(result.getEndpointId(), localPeerConnection);
 
