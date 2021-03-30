@@ -71,7 +71,7 @@ public class SignalingClient implements Signaling {
                 handleNotification(message, notification);
             }
 
-            System.out.println(message);
+            System.out.println("↓" + message);
         });
 
         webSocketProvider.setOnErrorListener((onErrorWebSocketProvider, throwable) -> {
@@ -185,7 +185,7 @@ public class SignalingClient implements Signaling {
 
         String json = new Gson().toJson(request);
 
-        System.out.println(json);
+        System.out.println("↑" + json);
 
         // Send our request to the moon (or signaling server).
         webSocketProvider.sendMessage(json);
@@ -194,7 +194,7 @@ public class SignalingClient implements Signaling {
     private void sendNotification(Notification notification) {
         String json = new Gson().toJson(notification);
 
-        System.out.println(json);
+        System.out.println("↑" + json);
 
         // Send our notification to the moon (or signaling server).
         webSocketProvider.sendMessage(json);
