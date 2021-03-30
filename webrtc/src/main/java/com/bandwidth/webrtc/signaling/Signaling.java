@@ -23,4 +23,5 @@ public interface Signaling {
     void requestToPublish(Boolean audio, Boolean video, String alias);
     void sendIceCandidate(String endpointId, String sdp, Integer sdpMLineIndex, String sdpMid);
     void setMediaPreferences();
+    void unpublish(String endpointId);
 }

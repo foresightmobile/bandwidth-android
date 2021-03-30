@@ -15,4 +15,5 @@ public interface RTCBandwidth {
 
     void connect(URI uri) throws ConnectionException;
     void publish(Boolean audio, Boolean video, String alias) throws NullSessionException;
+    void unpublish(String endpointId);
 }
