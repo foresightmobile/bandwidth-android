@@ -65,7 +65,7 @@ public class SignalingClient implements Signaling {
             Response response = new Gson().fromJson(message, Response.class);
             Notification notification = new Gson().fromJson(message, Notification.class);
 
-            if (response != null) {
+            if (response != null && response.getId() != null) {
                 handleResponse(message, response.getId());
             } else if (notification != null) {
                 handleNotification(message, notification);
