@@ -11,6 +11,7 @@ import com.bandwidth.webrtc.signaling.Signaling;
 import com.bandwidth.webrtc.signaling.SignalingClient;
 import com.bandwidth.webrtc.signaling.SignalingDelegate;
 import com.bandwidth.webrtc.signaling.rpc.transit.AddIceCandidateParams;
+import com.bandwidth.webrtc.signaling.rpc.transit.Candidate;
 import com.bandwidth.webrtc.signaling.rpc.transit.EndpointRemovedParams;
 import com.bandwidth.webrtc.signaling.rpc.transit.SdpNeededParams;
 import com.bandwidth.webrtc.signaling.websockets.NeoVisionariesWebSocket;
@@ -181,6 +182,11 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
 
                                 @Override
                                 public void onSetSuccess() {
+                                    for (Candidate candidate : result.getCandidates()) {
+                                        IceCandidate iceCandidate = new IceCandidate(candidate.getCandidate(), candidate.getSdpMLineIndex(), candidate.getSdpMid());
+                                        peerConnection.addIceCandidate(iceCandidate);
+                                    }
+
                                     onNegotiateSdpListener.onNegotiateSdp();
                                 }
 
