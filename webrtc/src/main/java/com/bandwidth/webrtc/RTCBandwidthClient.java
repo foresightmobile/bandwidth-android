@@ -122,65 +122,83 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
         VideoSource videoSource = peerConnectionFactory.createVideoSource(false);
         VideoTrack videoTrack = peerConnectionFactory.createVideoTrack(UUID.randomUUID().toString(), videoSource);
 
+//        MediaStream mediaStream = peerConnectionFactory.createLocalMediaStream("LocalMediaStream");
+//        mediaStream.addTrack(videoTrack);
+
         signaling.setOnRequestToPublishListener((signaling, result) -> {
-            PeerConnection localPeerConnection = peerConnectionFactory.createPeerConnection(configuration, new PeerConnection.Observer() {
-                @Override
-                public void onSignalingChange(PeerConnection.SignalingState signalingState) {
+            String endpointId = result.getEndpointId();
+            String participantId = result.getParticipantId();
+            List<String> mediaTypes = result.getMediaTypes();
 
-                }
-
-                @Override
-                public void onIceConnectionChange(PeerConnection.IceConnectionState iceConnectionState) {
-
-                }
-
-                @Override
-                public void onIceConnectionReceivingChange(boolean b) {
-
-                }
-
-                @Override
-                public void onIceGatheringChange(PeerConnection.IceGatheringState iceGatheringState) {
-
-                }
-
-                @Override
-                public void onIceCandidate(IceCandidate iceCandidate) {
-
-                }
-
-                @Override
-                public void onIceCandidatesRemoved(IceCandidate[] iceCandidates) {
-
-                }
-
-                @Override
-                public void onAddStream(MediaStream mediaStream) {
-
-                }
-
-                @Override
-                public void onRemoveStream(MediaStream mediaStream) {
-
-                }
-
-                @Override
-                public void onDataChannel(DataChannel dataChannel) {
-
-                }
-
-                @Override
-                public void onRenegotiationNeeded() {
-
-                }
-
-                @Override
-                public void onAddTrack(RtpReceiver rtpReceiver, MediaStream[] mediaStreams) {
-                    delegate.onStreamAvailable(RTCBandwidthClient.this, result.getEndpointId(), result.getParticipantId(), alias, result.getMediaTypes(), rtpReceiver);
-                }
+            PeerConnection localPeerConnection = peerConnectionFactory.createPeerConnection(configuration, new PeerConnectionAdapter() {
+//                @Override
+//                public void onAddTrack(RtpReceiver rtpReceiver, MediaStream[] mediaStreams) {
+//                    super.onAddTrack(rtpReceiver, mediaStreams);
+//mediaStreams[0].
+//                    delegate.onStreamAvailable(endpointId, participantId, alias, mediaTypes, mediaStream);
+//                }
             });
 
+//            PeerConnection localPeerConnection = peerConnectionFactory.createPeerConnection(configuration, new PeerConnection.Observer() {
+//                @Override
+//                public void onSignalingChange(PeerConnection.SignalingState signalingState) {
+//
+//                }
+//
+//                @Override
+//                public void onIceConnectionChange(PeerConnection.IceConnectionState iceConnectionState) {
+//
+//                }
+//
+//                @Override
+//                public void onIceConnectionReceivingChange(boolean b) {
+//
+//                }
+//
+//                @Override
+//                public void onIceGatheringChange(PeerConnection.IceGatheringState iceGatheringState) {
+//
+//                }
+//
+//                @Override
+//                public void onIceCandidate(IceCandidate iceCandidate) {
+//
+//                }
+//
+//                @Override
+//                public void onIceCandidatesRemoved(IceCandidate[] iceCandidates) {
+//
+//                }
+//
+//                @Override
+//                public void onAddStream(MediaStream mediaStream) {
+//
+//                }
+//
+//                @Override
+//                public void onRemoveStream(MediaStream mediaStream) {
+//
+//                }
+//
+//                @Override
+//                public void onDataChannel(DataChannel dataChannel) {
+//
+//                }
+//
+//                @Override
+//                public void onRenegotiationNeeded() {
+//
+//                }
+//
+//                @Override
+//                public void onAddTrack(RtpReceiver rtpReceiver, MediaStream[] mediaStreams) {
+//                    delegate.onStreamAvailable(RTCBandwidthClient.this, result.getEndpointId(), result.getParticipantId(), alias, result.getMediaTypes(), rtpReceiver);
+//                }
+//            });
+
             String streamId = UUID.randomUUID().toString();
+
+//            localPeerConnection.addStream(mediaStream);
 
             RtpSender audioSender = audio ? localPeerConnection.addTrack(audioTrack, Arrays.asList(streamId)) : null;
             RtpSender videoSender = video ? localPeerConnection.addTrack(videoTrack, Arrays.asList(streamId)) : null;
