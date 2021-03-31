@@ -260,7 +260,7 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
 
     @Override
     public void onSdpNeeded(Signaling signaling, SdpNeededParams params) {
-        PeerConnection remotePeerConnection = peerConnectionFactory.createPeerConnection(configuration, new PeerConnection.Observer() {
+        PeerConnection remotePeerConnection = peerConnectionFactory.createPeerConnection(configuration, mediaConstraints, new PeerConnection.Observer() {
             @Override
             public void onSignalingChange(PeerConnection.SignalingState signalingState) {
 
