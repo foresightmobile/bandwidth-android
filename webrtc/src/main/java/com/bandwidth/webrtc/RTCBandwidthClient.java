@@ -1,12 +1,12 @@
 package com.bandwidth.webrtc;
 
 import android.content.Context;
+import android.util.Log;
 
 import com.bandwidth.webrtc.listeners.OnConnectListener;
 import com.bandwidth.webrtc.listeners.OnNegotiateSdpListener;
 import com.bandwidth.webrtc.listeners.OnPublishListener;
 import com.bandwidth.webrtc.signaling.ConnectionException;
-import com.bandwidth.webrtc.signaling.NullSessionException;
 import com.bandwidth.webrtc.signaling.Signaling;
 import com.bandwidth.webrtc.signaling.SignalingClient;
 import com.bandwidth.webrtc.signaling.SignalingDelegate;
@@ -35,6 +35,8 @@ import org.webrtc.VideoDecoderFactory;
 import org.webrtc.VideoEncoderFactory;
 import org.webrtc.VideoSource;
 import org.webrtc.VideoTrack;
+import org.webrtc.audio.AudioDeviceModule;
+import org.webrtc.audio.JavaAudioDeviceModule;
 
 import java.net.URI;
 import java.util.ArrayList;
@@ -45,7 +47,9 @@ import java.util.Map;
 import java.util.UUID;
 
 public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
-    private static final String DTLS_SRTP_KEY_AGREEMENT_CONSTRAINT = "DtlsSrtpKeyAgreement";
+    private static final String TAG = "PCRTCClient";
+
+    private final Context appContext;
 
     private final RTCBandwidthDelegate delegate;
     private final Signaling signaling;
@@ -56,17 +60,16 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
     private final Map<String, PeerConnection> localPeerConnections;
     private final Map<String, PeerConnection> remotePeerConnections;
 
-    private MediaConstraints mediaConstraints;
-
     private OnConnectListener onConnectListener;
     private OnPublishListener onPublishListener;
     private OnNegotiateSdpListener onNegotiateSdpListener;
 
-    public RTCBandwidthClient(Context context, EglBase.Context eglContext, RTCBandwidthDelegate delegate) {
-            this(context, eglContext, delegate, new NeoVisionariesWebSocket());
+    public RTCBandwidthClient(Context appContext, EglBase.Context eglContext, RTCBandwidthDelegate delegate) {
+            this(appContext, eglContext, delegate, new NeoVisionariesWebSocket());
     }
 
-    public RTCBandwidthClient(Context context, EglBase.Context eglContext, RTCBandwidthDelegate delegate, WebSocketProvider webSocketProvider) {
+    public RTCBandwidthClient(Context appContext, EglBase.Context eglContext, RTCBandwidthDelegate delegate, WebSocketProvider webSocketProvider) {
+        this.appContext = appContext;
         this.delegate = delegate;
 
         signaling = new SignalingClient(webSocketProvider, this);
@@ -74,24 +77,104 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
         VideoEncoderFactory videoEncoderFactory = new DefaultVideoEncoderFactory(eglContext, true, true);
         VideoDecoderFactory videoDecoderFactory = new DefaultVideoDecoderFactory(eglContext);
 
-        PeerConnectionFactory.InitializationOptions initializationOptions = PeerConnectionFactory.InitializationOptions.builder(context)
+        PeerConnectionFactory.InitializationOptions initializationOptions = PeerConnectionFactory.InitializationOptions.builder(appContext)
                 .createInitializationOptions();
         PeerConnectionFactory.initialize(initializationOptions);
 
+        final AudioDeviceModule adm = createJavaAudioDevice();
+
         peerConnectionFactory = PeerConnectionFactory.builder()
                 .setOptions(new PeerConnectionFactory.Options())
+                .setAudioDeviceModule(adm)
                 .setVideoEncoderFactory(videoEncoderFactory)
                 .setVideoDecoderFactory(videoDecoderFactory)
                 .createPeerConnectionFactory();
 
         configuration = new PeerConnection.RTCConfiguration(new ArrayList<>());
         configuration.sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN;
+        configuration.enableDtlsSrtp = true;
 
         localPeerConnections = new HashMap<>();
         remotePeerConnections = new HashMap<>();
 
-        mediaConstraints = new MediaConstraints();
-        mediaConstraints.optional.add(new MediaConstraints.KeyValuePair(DTLS_SRTP_KEY_AGREEMENT_CONSTRAINT, "true"));
+        adm.release();
+    }
+
+
+    AudioDeviceModule createJavaAudioDevice() {
+        // Enable/disable OpenSL ES playback.
+//        if (!peerConnectionParameters.useOpenSLES) {
+//            Log.w(TAG, "External OpenSLES ADM not implemented yet.");
+//             TODO(magjed): Add support for external OpenSLES ADM.
+//        }
+        // Set audio record error callbacks.
+        JavaAudioDeviceModule.AudioRecordErrorCallback audioRecordErrorCallback = new JavaAudioDeviceModule.AudioRecordErrorCallback() {
+            @Override
+            public void onWebRtcAudioRecordInitError(String errorMessage) {
+                Log.e(TAG, "onWebRtcAudioRecordInitError: " + errorMessage);
+//                reportError(errorMessage);
+            }
+            @Override
+            public void onWebRtcAudioRecordStartError(
+                    JavaAudioDeviceModule.AudioRecordStartErrorCode errorCode, String errorMessage) {
+                Log.e(TAG, "onWebRtcAudioRecordStartError: " + errorCode + ". " + errorMessage);
+//                reportError(errorMessage);
+            }
+            @Override
+            public void onWebRtcAudioRecordError(String errorMessage) {
+                Log.e(TAG, "onWebRtcAudioRecordError: " + errorMessage);
+//                reportError(errorMessage);
+            }
+        };
+        JavaAudioDeviceModule.AudioTrackErrorCallback audioTrackErrorCallback = new JavaAudioDeviceModule.AudioTrackErrorCallback() {
+            @Override
+            public void onWebRtcAudioTrackInitError(String errorMessage) {
+                Log.e(TAG, "onWebRtcAudioTrackInitError: " + errorMessage);
+//                reportError(errorMessage);
+            }
+            @Override
+            public void onWebRtcAudioTrackStartError(
+                    JavaAudioDeviceModule.AudioTrackStartErrorCode errorCode, String errorMessage) {
+                Log.e(TAG, "onWebRtcAudioTrackStartError: " + errorCode + ". " + errorMessage);
+//                reportError(errorMessage);
+            }
+            @Override
+            public void onWebRtcAudioTrackError(String errorMessage) {
+                Log.e(TAG, "onWebRtcAudioTrackError: " + errorMessage);
+//                reportError(errorMessage);
+            }
+        };
+        // Set audio record state callbacks.
+        JavaAudioDeviceModule.AudioRecordStateCallback audioRecordStateCallback = new JavaAudioDeviceModule.AudioRecordStateCallback() {
+            @Override
+            public void onWebRtcAudioRecordStart() {
+                Log.i(TAG, "Audio recording starts");
+            }
+            @Override
+            public void onWebRtcAudioRecordStop() {
+                Log.i(TAG, "Audio recording stops");
+            }
+        };
+        // Set audio track state callbacks.
+        JavaAudioDeviceModule.AudioTrackStateCallback audioTrackStateCallback = new JavaAudioDeviceModule.AudioTrackStateCallback() {
+            @Override
+            public void onWebRtcAudioTrackStart() {
+                Log.i(TAG, "Audio playout starts");
+            }
+            @Override
+            public void onWebRtcAudioTrackStop() {
+                Log.i(TAG, "Audio playout stops");
+            }
+        };
+        return JavaAudioDeviceModule.builder(appContext)
+//                .setSamplesReadyCallback(saveRecordedAudioToFile)
+//                .setUseHardwareAcousticEchoCanceler(!peerConnectionParameters.disableBuiltInAEC)
+//                .setUseHardwareNoiseSuppressor(!peerConnectionParameters.disableBuiltInNS)
+                .setAudioRecordErrorCallback(audioRecordErrorCallback)
+                .setAudioTrackErrorCallback(audioTrackErrorCallback)
+                .setAudioRecordStateCallback(audioRecordStateCallback)
+                .setAudioTrackStateCallback(audioTrackStateCallback)
+                .createAudioDeviceModule();
     }
 
     @Override
@@ -127,20 +210,9 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
         VideoSource videoSource = peerConnectionFactory.createVideoSource(false);
         VideoTrack videoTrack = peerConnectionFactory.createVideoTrack(UUID.randomUUID().toString(), videoSource);
 
+        PeerConnection localPeerConnection = peerConnectionFactory.createPeerConnection(configuration, new PeerConnectionAdapter());
+
         signaling.setOnRequestToPublishListener((signaling, result) -> {
-            String endpointId = result.getEndpointId();
-            String participantId = result.getParticipantId();
-            List<String> mediaTypes = result.getMediaTypes();
-
-            PeerConnection localPeerConnection = peerConnectionFactory.createPeerConnection(configuration, mediaConstraints, new PeerConnectionAdapter() {
-//                @Override
-//                public void onAddTrack(RtpReceiver rtpReceiver, MediaStream[] mediaStreams) {
-//                    super.onAddTrack(rtpReceiver, mediaStreams);
-//mediaStreams[0].
-//                    delegate.onStreamAvailable(endpointId, participantId, alias, mediaTypes, mediaStream);
-//                }
-            });
-
             String streamId = UUID.randomUUID().toString();
 
             RtpSender audioSender = audio ? localPeerConnection.addTrack(audioTrack, Arrays.asList(streamId)) : null;
@@ -260,7 +332,7 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
 
     @Override
     public void onSdpNeeded(Signaling signaling, SdpNeededParams params) {
-        PeerConnection remotePeerConnection = peerConnectionFactory.createPeerConnection(configuration, mediaConstraints, new PeerConnection.Observer() {
+        PeerConnection remotePeerConnection = peerConnectionFactory.createPeerConnection(configuration, new PeerConnection.Observer() {
             @Override
             public void onSignalingChange(PeerConnection.SignalingState signalingState) {
 
