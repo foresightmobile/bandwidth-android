@@ -237,75 +237,34 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
     private void negotiateSdp(String endpointId, String direction, List<String> mediaTypes, PeerConnection peerConnection) {
         MediaConstraints mediaConstraints = new MediaConstraints();
 
-        if (direction.contains("recv")) {
-            mediaConstraints.mandatory.add(new MediaConstraints.KeyValuePair("OfferToReceiveAudio", String.valueOf(mediaTypes.contains("AUDIO"))));
-            mediaConstraints.mandatory.add(new MediaConstraints.KeyValuePair("OfferToReceiveVideo", String.valueOf(mediaTypes.contains("VIDEO"))));
-        }
+        mediaConstraints.mandatory.add(new MediaConstraints.KeyValuePair("OfferToReceiveAudio", String.valueOf(direction.contains("recv") && mediaTypes.contains("AUDIO"))));
+        mediaConstraints.mandatory.add(new MediaConstraints.KeyValuePair("OfferToReceiveVideo", String.valueOf(direction.contains("recv") && mediaTypes.contains("VIDEO"))));
 
-        peerConnection.createOffer(new SdpObserver() {
+        peerConnection.createOffer(new SdpAdapter() {
             @Override
             public void onCreateSuccess(SessionDescription sessionDescription) {
+                super.onCreateSuccess(sessionDescription);
+
                 signaling.setOnOfferSdpListener((signaling, result) -> {
-                    peerConnection.setLocalDescription(new SdpObserver() {
-                        @Override
-                        public void onCreateSuccess(SessionDescription sessionDescription) {
-
-                        }
-
+                    peerConnection.setLocalDescription(new SdpAdapter() {
                         @Override
                         public void onSetSuccess() {
-                            SessionDescription sdp = new SessionDescription(SessionDescription.Type.ANSWER, result.getSdpAnswer());
-                            peerConnection.setRemoteDescription(new SdpObserver() {
-                                @Override
-                                public void onCreateSuccess(SessionDescription sessionDescription) {
+                            super.onSetSuccess();
 
-                                }
-
+                            SessionDescription sessionDescription = new SessionDescription(SessionDescription.Type.ANSWER, result.getSdpAnswer());
+                            peerConnection.setRemoteDescription(new SdpAdapter() {
                                 @Override
                                 public void onSetSuccess() {
+                                    super.onSetSuccess();
+
                                     onNegotiateSdpListener.onNegotiateSdp();
                                 }
-
-                                @Override
-                                public void onCreateFailure(String s) {
-
-                                }
-
-                                @Override
-                                public void onSetFailure(String s) {
-
-                                }
-                            }, sdp);
-                        }
-
-                        @Override
-                        public void onCreateFailure(String s) {
-
-                        }
-
-                        @Override
-                        public void onSetFailure(String s) {
-
+                            }, sessionDescription);
                         }
                     }, sessionDescription);
                 });
 
                 signaling.offerSdp(endpointId, sessionDescription.description);
-            }
-
-            @Override
-            public void onSetSuccess() {
-
-            }
-
-            @Override
-            public void onCreateFailure(String s) {
-
-            }
-
-            @Override
-            public void onSetFailure(String s) {
-
             }
         }, mediaConstraints);
     }
