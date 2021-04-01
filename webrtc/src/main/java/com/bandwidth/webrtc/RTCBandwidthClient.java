@@ -215,13 +215,18 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
         signaling.setOnRequestToPublishListener((signaling, result) -> {
             String streamId = UUID.randomUUID().toString();
 
-            RtpSender audioSender = audio ? localPeerConnection.addTrack(audioTrack, Arrays.asList(streamId)) : null;
-            RtpSender videoSender = video ? localPeerConnection.addTrack(videoTrack, Arrays.asList(streamId)) : null;
+            if (audio) {
+                localPeerConnection.addTrack(audioTrack, Arrays.asList(streamId));
+            }
+
+            if (video) {
+                localPeerConnection.addTrack(videoTrack, Arrays.asList(streamId));
+            }
 
             localPeerConnections.put(result.getEndpointId(), localPeerConnection);
 
             setOnNegotiateSdpListener(() -> {
-                onPublishListener.onPublish(result.getMediaTypes(), audioSender, audioSource, videoSender, videoSource);
+                onPublishListener.onPublish(result.getMediaTypes(), audioSource, audioTrack, videoSource, videoTrack);
             });
 
             negotiateSdp(result.getEndpointId(), result.getDirection(), result.getMediaTypes(), localPeerConnection);
