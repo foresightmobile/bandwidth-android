@@ -2,9 +2,6 @@ package com.bandwidth.webrtc.signaling;
 
 import com.bandwidth.webrtc.signaling.listeners.OnConnectListener;
 import com.bandwidth.webrtc.signaling.listeners.OnDisconnectListener;
-import com.bandwidth.webrtc.signaling.listeners.OnOfferSdpListener;
-import com.bandwidth.webrtc.signaling.listeners.OnRequestToPublishListener;
-import com.bandwidth.webrtc.signaling.listeners.OnSetMediaPreferencesListener;
 import com.bandwidth.webrtc.signaling.rpc.QueueRequest;
 import com.bandwidth.webrtc.signaling.rpc.transit.AddIceCandidateParams;
 import com.bandwidth.webrtc.signaling.rpc.transit.AddIceCandidateSendParams;
@@ -33,16 +30,13 @@ import java.util.TimerTask;
 import java.util.UUID;
 
 public class SignalingClient implements Signaling {
-    private WebSocketProvider webSocketProvider;
-    private SignalingDelegate delegate;
+    private final WebSocketProvider webSocketProvider;
+    private final SignalingDelegate delegate;
 
-    private Map<String, QueueRequest> pendingQueueRequests = new HashMap<>();
+    private final Map<String, QueueRequest> pendingQueueRequests = new HashMap<>();
 
     private OnConnectListener onConnectListener;
     private OnDisconnectListener onDisconnectListener;
-    private OnOfferSdpListener onOfferSdpListener;
-    private OnRequestToPublishListener onRequestToPublishListener;
-    private OnSetMediaPreferencesListener onSetMediaPreferencesListener;
 
     public SignalingClient(WebSocketProvider webSocketProvider, SignalingDelegate delegate) {
         this.webSocketProvider = webSocketProvider;
@@ -70,7 +64,7 @@ public class SignalingClient implements Signaling {
                 handleNotification(message, notification);
             }
 
-            System.out.println("↓" + message);
+            System.out.println("↓ " + message);
         });
 
         webSocketProvider.setOnErrorListener((onErrorWebSocketProvider, throwable) -> {
@@ -91,21 +85,6 @@ public class SignalingClient implements Signaling {
     }
 
     @Override
-    public void setOnOfferSdpListener(OnOfferSdpListener onOfferSdpListener) {
-        this.onOfferSdpListener = onOfferSdpListener;
-    }
-
-    @Override
-    public void setOnRequestToPublishListener(OnRequestToPublishListener onRequestToPublishListener) {
-        this.onRequestToPublishListener = onRequestToPublishListener;
-    }
-
-    @Override
-    public void setOnSetMediaPreferencesListener(OnSetMediaPreferencesListener onSetMediaPreferencesListener) {
-        this.onSetMediaPreferencesListener = onSetMediaPreferencesListener;
-    }
-
-    @Override
     public void connect(URI uri) throws ConnectionException {
         webSocketProvider.open(uri);
     }
@@ -116,15 +95,15 @@ public class SignalingClient implements Signaling {
     }
 
     @Override
-    public void offerSdp(String endpointId, String sdp) {
+    public void offerSdp(String endpointId, String sdp, Observer observer) {
         OfferSdpParams params = new OfferSdpParams(endpointId, sdp);
-        Request request = new Request<>(UUID.randomUUID().toString(), "2.0", "offerSdp", params);
+        Request<OfferSdpParams> request = new Request<>(UUID.randomUUID().toString(), "2.0", "offerSdp", params);
 
-        sendRequest(request);
+        sendRequest(request, observer);
     }
 
     @Override
-    public void requestToPublish(Boolean audio, Boolean video, String alias) {
+    public void requestToPublish(Boolean audio, Boolean video, String alias, Observer observer) {
         List<String> mediaTypes = new ArrayList<>();
 
         if (audio) {
@@ -138,7 +117,7 @@ public class SignalingClient implements Signaling {
         RequestToPublishParams params = new RequestToPublishParams(mediaTypes, alias);
         Request<RequestToPublishParams> request = new Request<>(UUID.randomUUID().toString(), "2.0", "requestToPublish", params);
 
-        sendRequest(request);
+        sendRequest(request, observer);
     }
 
     @Override
@@ -150,18 +129,18 @@ public class SignalingClient implements Signaling {
     }
 
     @Override
-    public void setMediaPreferences() {
+    public void setMediaPreferences(Observer observer) {
         SetMediaPreferencesParams params = new SetMediaPreferencesParams("WEB_RTC", "NONE", false);
         Request request = new Request<>(UUID.randomUUID().toString(), "2.0", "setMediaPreferences", params);
 
-        sendRequest(request);
+        sendRequest(request, observer);
     }
 
-    private void sendRequest(Request request) {
-        sendRequest(request, 5000L);
+    private void sendRequest(Request request, Observer observer) {
+        sendRequest(request, observer, 5000L);
     }
 
-    private void sendRequest(Request request, Long timeout) {
+    private void sendRequest(Request request, Observer observer, Long timeout) {
         Timer timer = new Timer();
         timer.schedule(new TimerTask() {
             @Override
@@ -172,11 +151,11 @@ public class SignalingClient implements Signaling {
         }, timeout);
 
         // Keep a reference to our request as we wait for a response.
-        pendingQueueRequests.put(request.getId(), new QueueRequest(request.getMethod(), timer));
+        pendingQueueRequests.put(request.getId(), new QueueRequest(request.getMethod(), observer, timer));
 
         String json = new Gson().toJson(request);
 
-        System.out.println("↑" + json);
+        System.out.println("↑ " + json);
 
         // Send our request to the moon (or signaling server).
         webSocketProvider.sendMessage(json);
@@ -185,7 +164,7 @@ public class SignalingClient implements Signaling {
     private void sendNotification(Notification notification) {
         String json = new Gson().toJson(notification);
 
-        System.out.println("↑" + json);
+        System.out.println("↑ " + json);
 
         // Send our notification to the moon (or signaling server).
         webSocketProvider.sendMessage(json);
@@ -199,31 +178,19 @@ public class SignalingClient implements Signaling {
 
         switch (pendingQueueRequest.getMethod()) {
             case "setMediaPreferences":
-                if (onSetMediaPreferencesListener != null) {
-                    try {
-                        onSetMediaPreferencesListener.onSetMediaPreferences(this);
-                    } catch (NullSessionException e) {
-                        e.printStackTrace();
-                    }
-                }
+                pendingQueueRequest.getObserver().onSetMediaPreferences(this);
                 break;
             case "requestToPublish":
-                if (onRequestToPublishListener != null) {
-                    Type requestToPublishResultType = new TypeToken<Response<RequestToPublishResult>>() {
-                    }.getType();
-                    Response<RequestToPublishResult> requestToPublishResponse = new Gson().fromJson(message, requestToPublishResultType);
+                Type requestToPublishResultType = new TypeToken<Response<RequestToPublishResult>>() { }.getType();
+                Response<RequestToPublishResult> requestToPublishResponse = new Gson().fromJson(message, requestToPublishResultType);
 
-                    onRequestToPublishListener.onRequestToPublish(this, requestToPublishResponse.getResult());
-                }
+                pendingQueueRequest.getObserver().onRequestToPublish(this, requestToPublishResponse.getResult());
                 break;
             case "offerSdp":
-                if (onOfferSdpListener != null) {
-                    Type offerSdpResultType = new TypeToken<Response<OfferSdpResult>>() {
-                    }.getType();
-                    Response<OfferSdpResult> offerSdpResponse = new Gson().fromJson(message, offerSdpResultType);
+                Type offerSdpResultType = new TypeToken<Response<OfferSdpResult>>() { }.getType();
+                Response<OfferSdpResult> offerSdpResponse = new Gson().fromJson(message, offerSdpResultType);
 
-                    onOfferSdpListener.onOfferSdp(this, offerSdpResponse.getResult());
-                }
+                pendingQueueRequest.getObserver().onOfferSdp(this, offerSdpResponse.getResult());
                 break;
         }
     }
