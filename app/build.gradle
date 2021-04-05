@@ -35,13 +35,17 @@ android {
 
 def getWebRTCServerPath() {
     def Properties props = new Properties()
-    props.load(new FileInputStream(new File('app/config.properties')))
+    File file = new File('app/config.properties')
+    if (file.exists())
+        props.load(new FileInputStream(file))
     return props['WEBRTC_SERVER_PATH']
 }
 
 def getConferenceServerPath() {
     def Properties props = new Properties()
-    props.load(new FileInputStream(new File('app/config.properties')))
+    File file = new File('app/config.properties')
+    if (file.exists())
+        props.load(new FileInputStream(file))
     return props['CONFERENCE_SERVER_PATH']
 }
 
