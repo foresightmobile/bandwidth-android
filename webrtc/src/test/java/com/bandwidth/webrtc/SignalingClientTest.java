@@ -20,7 +20,7 @@ public class SignalingClientTest {
         SignalingDelegate mockedSignalingDelegate = mock(SignalingDelegate.class);
 
         Signaling signaling = new SignalingClient(mockedWebSocketProvider, mockedSignalingDelegate);
-        signaling.offerSdp("123-456", "offer-sdp");
+        signaling.offerSdp("123-456", "offer-sdp", new Signaling.Adapter());
 
         // Pattern matching for an sdp offer, required due to each request having a unique id.
         String pattern = "^\\{\"id\":\"[\\w\\d-]+\",\"jsonrpc\":\"2.0\",\"method\":\"offerSdp\",\"params\":\\{\"endpointId\":\"123-456\",\"sdpOffer\":\"offer-sdp\"\\}\\}$";
@@ -34,7 +34,7 @@ public class SignalingClientTest {
         SignalingDelegate mockedSignalingDelegate = mock(SignalingDelegate.class);
 
         Signaling signaling = new SignalingClient(mockedWebSocketProvider, mockedSignalingDelegate);
-        signaling.requestToPublish(true, true, "signaling-alias");
+        signaling.requestToPublish(true, true, "signaling-alias", new Signaling.Adapter());
 
         // Pattern matching for an sdp offer, required due to each request having a unique id.
         String pattern = "^\\{\"id\":\"[\\w\\d-]+\",\"jsonrpc\":\"2.0\",\"method\":\"requestToPublish\",\"params\":\\{\"mediaTypes\":\\[\"AUDIO\",\"VIDEO\"\\],\"alias\":\"signaling-alias\"\\}\\}$";
@@ -48,7 +48,7 @@ public class SignalingClientTest {
         SignalingDelegate mockedSignalingDelegate = mock(SignalingDelegate.class);
 
         Signaling signaling = new SignalingClient(mockedWebSocketProvider, mockedSignalingDelegate);
-        signaling.setMediaPreferences();
+        signaling.setMediaPreferences(new Signaling.Adapter());
 
         // Pattern matching for an sdp offer, required due to each request having a unique id.
         String pattern = "^\\{\"id\":\"[\\w\\d-]+\",\"jsonrpc\":\"2.0\",\"method\":\"setMediaPreferences\",\"params\":\\{\"protocol\":\"WEB_RTC\",\"aggregationType\":\"NONE\",\"sendRecv\":false\\}\\}$";
