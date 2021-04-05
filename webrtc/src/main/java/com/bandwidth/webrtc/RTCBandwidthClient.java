@@ -6,40 +6,44 @@ import com.bandwidth.webrtc.listeners.OnConnectListener;
 import com.bandwidth.webrtc.listeners.OnNegotiateSdpListener;
 import com.bandwidth.webrtc.listeners.OnPublishListener;
 import com.bandwidth.webrtc.signaling.ConnectionException;
-import com.bandwidth.webrtc.signaling.NullSessionException;
 import com.bandwidth.webrtc.signaling.Signaling;
 import com.bandwidth.webrtc.signaling.SignalingClient;
 import com.bandwidth.webrtc.signaling.SignalingDelegate;
 import com.bandwidth.webrtc.signaling.rpc.transit.AddIceCandidateParams;
 import com.bandwidth.webrtc.signaling.rpc.transit.EndpointRemovedParams;
+import com.bandwidth.webrtc.signaling.rpc.transit.OfferSdpResult;
+import com.bandwidth.webrtc.signaling.rpc.transit.RequestToPublishResult;
 import com.bandwidth.webrtc.signaling.rpc.transit.SdpNeededParams;
 import com.bandwidth.webrtc.signaling.websockets.NeoVisionariesWebSocket;
 import com.bandwidth.webrtc.signaling.websockets.WebSocketProvider;
 
-import org.webrtc.DataChannel;
+import org.webrtc.AudioSource;
+import org.webrtc.AudioTrack;
 import org.webrtc.DefaultVideoDecoderFactory;
 import org.webrtc.DefaultVideoEncoderFactory;
+import org.webrtc.EglBase;
 import org.webrtc.IceCandidate;
 import org.webrtc.MediaConstraints;
 import org.webrtc.MediaStream;
 import org.webrtc.PeerConnection;
 import org.webrtc.PeerConnectionFactory;
 import org.webrtc.RtpReceiver;
-import org.webrtc.RtpSender;
-import org.webrtc.SdpObserver;
 import org.webrtc.SessionDescription;
 import org.webrtc.VideoDecoderFactory;
 import org.webrtc.VideoEncoderFactory;
+import org.webrtc.VideoSource;
+import org.webrtc.VideoTrack;
 
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
+    private final Context appContext;
+
     private final RTCBandwidthDelegate delegate;
     private final Signaling signaling;
 
@@ -51,34 +55,35 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
 
     private OnConnectListener onConnectListener;
     private OnPublishListener onPublishListener;
-    private OnNegotiateSdpListener onNegotiateSdpListener;
 
-    public RTCBandwidthClient(Context context, RTCBandwidthDelegate delegate) {
-            this(context, delegate, new NeoVisionariesWebSocket());
+    public RTCBandwidthClient(Context appContext, EglBase.Context eglContext, RTCBandwidthDelegate delegate) {
+            this(appContext, eglContext, delegate, new NeoVisionariesWebSocket());
     }
 
-    public RTCBandwidthClient(Context context, RTCBandwidthDelegate delegate, WebSocketProvider webSocketProvider) {
+    public RTCBandwidthClient(Context appContext, EglBase.Context eglContext, RTCBandwidthDelegate delegate, WebSocketProvider webSocketProvider) {
+        this.appContext = appContext;
         this.delegate = delegate;
 
         signaling = new SignalingClient(webSocketProvider, this);
+        
+        VideoEncoderFactory videoEncoderFactory = new DefaultVideoEncoderFactory(eglContext, true, true);
+        VideoDecoderFactory videoDecoderFactory = new DefaultVideoDecoderFactory(eglContext);
 
-//        EglBase eglBase = EglBase.create();
-
-        VideoEncoderFactory videoEncoderFactory = new DefaultVideoEncoderFactory(null, true, true);
-        VideoDecoderFactory videoDecoderFactory = new DefaultVideoDecoderFactory(null);
-
-        PeerConnectionFactory.InitializationOptions initializationOptions = PeerConnectionFactory.InitializationOptions.builder(context)
+        PeerConnectionFactory.InitializationOptions initializationOptions = PeerConnectionFactory.InitializationOptions.builder(appContext)
                 .createInitializationOptions();
         PeerConnectionFactory.initialize(initializationOptions);
 
+        PeerConnectionFactory.Options options = new PeerConnectionFactory.Options();
+
         peerConnectionFactory = PeerConnectionFactory.builder()
-                .setOptions(new PeerConnectionFactory.Options())
+                .setOptions(options)
                 .setVideoEncoderFactory(videoEncoderFactory)
                 .setVideoDecoderFactory(videoDecoderFactory)
                 .createPeerConnectionFactory();
 
-        configuration = new PeerConnection.RTCConfiguration(new ArrayList<>());
+        configuration = new PeerConnection.RTCConfiguration(Collections.emptyList());
         configuration.sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN;
+        configuration.enableDtlsSrtp = true;
 
         localPeerConnections = new HashMap<>();
         remotePeerConnections = new HashMap<>();
@@ -94,10 +99,6 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
         onPublishListener = listener;
     }
 
-    private void setOnNegotiateSdpListener(OnNegotiateSdpListener listener) {
-        onNegotiateSdpListener = listener;
-    }
-
     @Override
     public void connect(URI uri) throws ConnectionException {
         signaling.setOnConnectListener(signaling -> {
@@ -110,158 +111,80 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
     }
 
     @Override
-    public void publish(Boolean audio, Boolean video, String alias) throws NullSessionException {
-        signaling.setOnRequestToPublishListener((signaling, result) -> {
-            PeerConnection localPeerConnection = peerConnectionFactory.createPeerConnection(configuration, new PeerConnection.Observer() {
-                @Override
-                public void onSignalingChange(PeerConnection.SignalingState signalingState) {
+    public void publish(Boolean audio, Boolean video, String alias) {
+        AudioSource audioSource = peerConnectionFactory.createAudioSource(new MediaConstraints());
+        AudioTrack audioTrack = peerConnectionFactory.createAudioTrack(UUID.randomUUID().toString(), audioSource);
 
-                }
+        VideoSource videoSource = peerConnectionFactory.createVideoSource(false);
+        VideoTrack videoTrack = peerConnectionFactory.createVideoTrack(UUID.randomUUID().toString(), videoSource);
 
-                @Override
-                public void onIceConnectionChange(PeerConnection.IceConnectionState iceConnectionState) {
-
-                }
-
-                @Override
-                public void onIceConnectionReceivingChange(boolean b) {
-
-                }
-
-                @Override
-                public void onIceGatheringChange(PeerConnection.IceGatheringState iceGatheringState) {
-
-                }
-
-                @Override
-                public void onIceCandidate(IceCandidate iceCandidate) {
-
-                }
-
-                @Override
-                public void onIceCandidatesRemoved(IceCandidate[] iceCandidates) {
-
-                }
-
-                @Override
-                public void onAddStream(MediaStream mediaStream) {
-
-                }
-
-                @Override
-                public void onRemoveStream(MediaStream mediaStream) {
-
-                }
-
-                @Override
-                public void onDataChannel(DataChannel dataChannel) {
-
-                }
-
-                @Override
-                public void onRenegotiationNeeded() {
-
-                }
-
-                @Override
-                public void onAddTrack(RtpReceiver rtpReceiver, MediaStream[] mediaStreams) {
-                    delegate.onStreamAvailable(RTCBandwidthClient.this, result.getEndpointId(), result.getParticipantId(), alias, result.getMediaTypes(), rtpReceiver);
-                }
-            });
-
+        PeerConnection localPeerConnection = peerConnectionFactory.createPeerConnection(configuration, new PeerConnectionAdapter());
+        if (localPeerConnection != null) {
             String streamId = UUID.randomUUID().toString();
 
-            RtpSender audioSender = audio ? localPeerConnection.addTrack(peerConnectionFactory.createAudioTrack(UUID.randomUUID().toString(), peerConnectionFactory.createAudioSource(new MediaConstraints())), Arrays.asList(streamId)) : null;
-            RtpSender videoSender = video ? localPeerConnection.addTrack(peerConnectionFactory.createVideoTrack(UUID.randomUUID().toString(), peerConnectionFactory.createVideoSource(false)), Arrays.asList(streamId)) : null;
+            if (audio) {
+                localPeerConnection.addTrack(audioTrack, Collections.singletonList(streamId));
+            }
 
-            localPeerConnections.put(result.getEndpointId(), localPeerConnection);
-
-            setOnNegotiateSdpListener(() -> {
-                onPublishListener.onPublish(result.getMediaTypes(), audioSender, videoSender);
-            });
-
-            negotiateSdp(result.getEndpointId(), result.getDirection(), result.getMediaTypes(), localPeerConnection);
-        });
-
-        signaling.setOnSetMediaPreferencesListener(signaling -> {
-            signaling.requestToPublish(audio, video, alias);
-        });
-
-        signaling.setMediaPreferences();
-    }
-
-    private void negotiateSdp(String endpointId, String direction, List<String> mediaTypes, PeerConnection peerConnection) {
-        MediaConstraints mediaConstraints = new MediaConstraints();
-
-        if (direction.contains("recv")) {
-            mediaConstraints.mandatory.add(new MediaConstraints.KeyValuePair("OfferToReceiveAudio", String.valueOf(mediaTypes.contains("AUDIO"))));
-            mediaConstraints.mandatory.add(new MediaConstraints.KeyValuePair("OfferToReceiveVideo", String.valueOf(mediaTypes.contains("VIDEO"))));
+            if (video) {
+                localPeerConnection.addTrack(videoTrack, Collections.singletonList(streamId));
+            }
         }
 
-        peerConnection.createOffer(new SdpObserver() {
+        signaling.setMediaPreferences(new Signaling.Adapter() {
+            @Override
+            public void onSetMediaPreferences(Signaling signaling) {
+                super.onSetMediaPreferences(signaling);
+
+                signaling.requestToPublish(audio, video, alias, new Signaling.Adapter() {
+                    @Override
+                    public void onRequestToPublish(Signaling signaling, RequestToPublishResult result) {
+                        super.onRequestToPublish(signaling, result);
+
+                        localPeerConnections.put(result.getEndpointId(), localPeerConnection);
+
+                        negotiateSdp(result.getEndpointId(), result.getDirection(), result.getMediaTypes(), localPeerConnection, () -> {
+                            System.out.println("onNegotiateSdpListener...");
+                            onPublishListener.onPublish(result.getMediaTypes(), audioSource, audioTrack, videoSource, videoTrack);
+                        });
+                    }
+                });
+            }
+        });
+    }
+
+    private void negotiateSdp(String endpointId, String direction, List<String> mediaTypes, PeerConnection peerConnection, OnNegotiateSdpListener onNegotiateSdpListener) {
+        MediaConstraints mediaConstraints = new MediaConstraints();
+
+        mediaConstraints.mandatory.add(new MediaConstraints.KeyValuePair("OfferToReceiveAudio", String.valueOf(direction.contains("recv") && mediaTypes.contains("AUDIO"))));
+        mediaConstraints.mandatory.add(new MediaConstraints.KeyValuePair("OfferToReceiveVideo", String.valueOf(direction.contains("recv") && mediaTypes.contains("VIDEO"))));
+
+        peerConnection.createOffer(new SdpAdapter() {
             @Override
             public void onCreateSuccess(SessionDescription sessionDescription) {
-                signaling.setOnOfferSdpListener((signaling, result) -> {
-                    peerConnection.setLocalDescription(new SdpObserver() {
-                        @Override
-                        public void onCreateSuccess(SessionDescription sessionDescription) {
+                super.onCreateSuccess(sessionDescription);
 
-                        }
+                signaling.offerSdp(endpointId, sessionDescription.description, new Signaling.Adapter() {
+                    @Override
+                    public void onOfferSdp(Signaling signaling, OfferSdpResult result) {
+                        super.onOfferSdp(signaling, result);
 
-                        @Override
-                        public void onSetSuccess() {
-                            SessionDescription sdp = new SessionDescription(SessionDescription.Type.ANSWER, result.getSdpAnswer());
-                            peerConnection.setRemoteDescription(new SdpObserver() {
-                                @Override
-                                public void onCreateSuccess(SessionDescription sessionDescription) {
+                        peerConnection.setLocalDescription(new SdpAdapter() {
+                            @Override
+                            public void onSetSuccess() {
+                                super.onSetSuccess();
 
-                                }
-
-                                @Override
-                                public void onSetSuccess() {
-                                    onNegotiateSdpListener.onNegotiateSdp();
-                                }
-
-                                @Override
-                                public void onCreateFailure(String s) {
-
-                                }
-
-                                @Override
-                                public void onSetFailure(String s) {
-
-                                }
-                            }, sdp);
-                        }
-
-                        @Override
-                        public void onCreateFailure(String s) {
-
-                        }
-
-                        @Override
-                        public void onSetFailure(String s) {
-
-                        }
-                    }, sessionDescription);
+                                SessionDescription sessionDescription = new SessionDescription(SessionDescription.Type.ANSWER, result.getSdpAnswer());
+                                peerConnection.setRemoteDescription(new SdpAdapter() {
+                                    @Override
+                                    public void onSetSuccess() {
+                                        onNegotiateSdpListener.onNegotiateSdp();
+                                    }
+                                }, sessionDescription);
+                            }
+                        }, sessionDescription);
+                    }
                 });
-
-                signaling.offerSdp(endpointId, sessionDescription.description);
-            }
-
-            @Override
-            public void onSetSuccess() {
-
-            }
-
-            @Override
-            public void onCreateFailure(String s) {
-
-            }
-
-            @Override
-            public void onSetFailure(String s) {
-
             }
         }, mediaConstraints);
     }
@@ -288,55 +211,15 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
 
     @Override
     public void onSdpNeeded(Signaling signaling, SdpNeededParams params) {
-        PeerConnection remotePeerConnection = peerConnectionFactory.createPeerConnection(configuration, new PeerConnection.Observer() {
-            @Override
-            public void onSignalingChange(PeerConnection.SignalingState signalingState) {
-
-            }
-
+        PeerConnection remotePeerConnection = peerConnectionFactory.createPeerConnection(configuration, new PeerConnectionAdapter() {
             @Override
             public void onIceConnectionChange(PeerConnection.IceConnectionState iceConnectionState) {
-
-            }
-
-            @Override
-            public void onIceConnectionReceivingChange(boolean b) {
-
-            }
-
-            @Override
-            public void onIceGatheringChange(PeerConnection.IceGatheringState iceGatheringState) {
-
+                super.onIceConnectionChange(iceConnectionState);
             }
 
             @Override
             public void onIceCandidate(IceCandidate iceCandidate) {
-
-            }
-
-            @Override
-            public void onIceCandidatesRemoved(IceCandidate[] iceCandidates) {
-
-            }
-
-            @Override
-            public void onAddStream(MediaStream mediaStream) {
-
-            }
-
-            @Override
-            public void onRemoveStream(MediaStream mediaStream) {
-
-            }
-
-            @Override
-            public void onDataChannel(DataChannel dataChannel) {
-
-            }
-
-            @Override
-            public void onRenegotiationNeeded() {
-
+                signaling.sendIceCandidate(params.getEndpointId(), iceCandidate.sdp, iceCandidate.sdpMLineIndex, iceCandidate.sdpMid);
             }
 
             @Override
@@ -345,8 +228,12 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
             }
         });
 
-        remotePeerConnections.put(params.getEndpointId(), remotePeerConnection);
+        if (remotePeerConnection != null) {
+            remotePeerConnections.put(params.getEndpointId(), remotePeerConnection);
 
-        negotiateSdp(params.getEndpointId(), params.getDirection(), params.getMediaTypes(), remotePeerConnection);
+            negotiateSdp(params.getEndpointId(), params.getDirection(), params.getMediaTypes(), remotePeerConnection, () -> {
+
+            });
+        }
     }
 }
