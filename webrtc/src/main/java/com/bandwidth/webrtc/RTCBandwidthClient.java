@@ -57,7 +57,7 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
     private OnPublishListener onPublishListener;
 
     public RTCBandwidthClient(Context appContext, EglBase.Context eglContext, RTCBandwidthDelegate delegate) {
-            this(appContext, eglContext, delegate, new NeoVisionariesWebSocket());
+        this(appContext, eglContext, delegate, new NeoVisionariesWebSocket());
     }
 
     public RTCBandwidthClient(Context appContext, EglBase.Context eglContext, RTCBandwidthDelegate delegate, WebSocketProvider webSocketProvider) {
@@ -65,7 +65,7 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
         this.delegate = delegate;
 
         signaling = new SignalingClient(webSocketProvider, this);
-        
+
         VideoEncoderFactory videoEncoderFactory = new DefaultVideoEncoderFactory(eglContext, true, true);
         VideoDecoderFactory videoDecoderFactory = new DefaultVideoDecoderFactory(eglContext);
 
@@ -193,13 +193,13 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
     public void onAddIceCandidate(Signaling signaling, AddIceCandidateParams params) {
         PeerConnection remotePeerConnection = remotePeerConnections.get(params.getEndpointId());
         if (remotePeerConnection != null) {
-            IceCandidate candidate = new IceCandidate(params.getCandidate().getCandidate(), params.getCandidate().getSdpMLineIndex(), params.getCandidate().getSdpMid());
+            IceCandidate candidate = new IceCandidate(params.getCandidate().getSdpMid(), params.getCandidate().getSdpMLineIndex(), params.getCandidate().getCandidate());
             remotePeerConnection.addIceCandidate(candidate);
         }
 
         PeerConnection localPeerConnection = localPeerConnections.get(params.getEndpointId());
         if (localPeerConnection != null) {
-            IceCandidate candidate = new IceCandidate(params.getCandidate().getCandidate(), params.getCandidate().getSdpMLineIndex(), params.getCandidate().getSdpMid());
+            IceCandidate candidate = new IceCandidate(params.getCandidate().getSdpMid(), params.getCandidate().getSdpMLineIndex(), params.getCandidate().getCandidate());
             localPeerConnection.addIceCandidate(candidate);
         }
     }
