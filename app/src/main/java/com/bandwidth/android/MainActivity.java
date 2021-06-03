@@ -142,8 +142,9 @@ public class MainActivity extends AppCompatActivity implements RTCBandwidthDeleg
 
         String deviceToken = Conference.getInstance().requestDeviceToken(conferenceServerPath);
         String uniqueId = UUID.randomUUID().toString();
+        String sdkVersion = "android-alpha";
 
-        String path = String.format("%s?token=%s&uniqueId=%s", webRtcServerPath, deviceToken, uniqueId);
+        String path = String.format("%s?token=%s&sdkVersion=%s&uniqueId=%s", webRtcServerPath, deviceToken, sdkVersion, uniqueId);
         return new URI(path);
     }
 }
