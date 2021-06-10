@@ -8,6 +8,7 @@ import com.bandwidth.webrtc.listeners.OnHandleSubscribeSdpOfferListener;
 import com.bandwidth.webrtc.listeners.OnOfferPublishSdpListener;
 import com.bandwidth.webrtc.listeners.OnPublishListener;
 import com.bandwidth.webrtc.listeners.OnSetupPublishingPeerConnectionListener;
+import com.bandwidth.webrtc.listeners.OnUnpublishListener;
 import com.bandwidth.webrtc.signaling.ConnectionException;
 import com.bandwidth.webrtc.signaling.Signaling;
 import com.bandwidth.webrtc.signaling.SignalingClient;
@@ -133,12 +134,12 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
         cleanupPublishedStreams(publishedStreams);
         if (publishingPeerConnection != null) {
             publishingPeerConnection.close();
+            publishingPeerConnection = null;
         }
         if (subscribingPeerConnection != null) {
             subscribingPeerConnection.close();
+            subscribingPeerConnection = null;
         }
-        publishingPeerConnection = null;
-        subscribingPeerConnection = null;
     }
 
     @Override
@@ -166,6 +167,21 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
                 RTCStream stream = new RTCStream(mediaTypes, mediaStream, audioSource, videoSource, alias, null);
                 onPublishListener.onPublish(stream);
             });
+        });
+    }
+
+    public void unpublish(List<String> streamIds, OnUnpublishListener onUnpublishListener) {
+        Map<String, PublishedStream> filteredPublishedStreams = new HashMap<>();
+
+        for (String streamId : streamIds) {
+            PublishedStream publishedStream = publishedStreams.get(streamId);
+            filteredPublishedStreams.put(streamId, publishedStream);
+        }
+
+        cleanupPublishedStreams(filteredPublishedStreams);
+
+        offerPublishSdp(false, result -> {
+            onUnpublishListener.onUnpublish();
         });
     }
 
@@ -324,7 +340,23 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
     }
 
     private void cleanupPublishedStreams(Map<String, PublishedStream> publishedStreams) {
-        // TODO: Fill with logic for unpublishing, published streams.
+        if (publishingPeerConnection != null) {
+            for (Map.Entry<String, PublishedStream> publishedStream : publishedStreams.entrySet()) {
+                List<MediaStreamTrack> tracks = new ArrayList<MediaStreamTrack>();
+                tracks.addAll(publishedStream.getValue().getMediaStream().audioTracks);
+                tracks.addAll(publishedStream.getValue().getMediaStream().videoTracks);
+
+                for (MediaStreamTrack track : tracks) {
+                    for (RtpTransceiver transceiver : publishingPeerConnection.getTransceivers()) {
+                        if (track == transceiver.getSender().track()) {
+                            publishingPeerConnection.removeTrack(transceiver.getSender());
+                            transceiver.stop();
+                        }
+                    }
+                    track.setEnabled(false);
+                }
+            }
+        }
     }
 
     private String setSdpMediaSetup(String sdp, Boolean considerDirection, String template) {
