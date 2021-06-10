@@ -25,6 +25,8 @@
         app:layout_constraintRight_toRightOf="parent" />
 
     <RelativeLayout
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"
         app:layout_constraintBottom_toTopOf="@+id/remoteSurfaceViewRenderer"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
