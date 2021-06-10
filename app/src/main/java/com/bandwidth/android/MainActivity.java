@@ -1,6 +1,8 @@
 package com.bandwidth.android;
 
 import android.os.Bundle;
+import android.view.View;
+import android.widget.Button;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -39,6 +41,8 @@ public class MainActivity extends AppCompatActivity implements RTCBandwidthDeleg
 
     private EglBase eglBase;
 
+    private Boolean isConnected = false;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -62,11 +66,28 @@ public class MainActivity extends AppCompatActivity implements RTCBandwidthDeleg
 
         bandwidth = new RTCBandwidthClient(getApplicationContext(), eglBase.getEglBaseContext(), this);
 
+        final Button button = findViewById(R.id.connectButton);
+        button.setOnClickListener(view -> {
+            if (isConnected) {
+                disconnect();
+                button.setText("Connect");
+            } else {
+                connect();
+                button.setText("Disconnect");
+            }
+        });
+
+
+    }
+
+    private void connect() {
         new Thread((() -> {
             try {
                 URI uri = createURI();
 
                 bandwidth.connect(uri, () -> {
+                    isConnected = true;
+
                     bandwidth.publish("hello-world", stream -> {
                         runOnUiThread(() -> {
                             localVideoTrack = stream.getMediaStream().videoTracks.get(0);
@@ -86,6 +107,11 @@ public class MainActivity extends AppCompatActivity implements RTCBandwidthDeleg
                 e.printStackTrace();
             }
         })).start();
+    }
+
+    private void disconnect() {
+        isConnected = false;
+        bandwidth.disconnect();
     }
 
     private VideoCapturer createVideoCapturer() {
