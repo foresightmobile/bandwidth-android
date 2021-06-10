@@ -3,27 +3,25 @@ package com.bandwidth.webrtc.signaling;
 import com.bandwidth.webrtc.signaling.listeners.OnConnectListener;
 import com.bandwidth.webrtc.signaling.listeners.OnDisconnectListener;
 import com.bandwidth.webrtc.signaling.rpc.QueueRequest;
-import com.bandwidth.webrtc.signaling.rpc.transit.AddIceCandidateParams;
-import com.bandwidth.webrtc.signaling.rpc.transit.AddIceCandidateSendParams;
-import com.bandwidth.webrtc.signaling.rpc.transit.EndpointRemovedParams;
+import com.bandwidth.webrtc.signaling.rpc.transit.AnswerSdpParams;
+import com.bandwidth.webrtc.signaling.rpc.transit.AnswerSdpResult;
+import com.bandwidth.webrtc.signaling.rpc.transit.LeaveParams;
 import com.bandwidth.webrtc.signaling.rpc.transit.OfferSdpParams;
 import com.bandwidth.webrtc.signaling.rpc.transit.OfferSdpResult;
-import com.bandwidth.webrtc.signaling.rpc.transit.RequestToPublishParams;
-import com.bandwidth.webrtc.signaling.rpc.transit.RequestToPublishResult;
-import com.bandwidth.webrtc.signaling.rpc.transit.SdpNeededParams;
+import com.bandwidth.webrtc.signaling.rpc.transit.SdpOfferParams;
 import com.bandwidth.webrtc.signaling.rpc.transit.SetMediaPreferencesParams;
+import com.bandwidth.webrtc.signaling.rpc.transit.SetMediaPreferencesResult;
 import com.bandwidth.webrtc.signaling.rpc.transit.base.Notification;
 import com.bandwidth.webrtc.signaling.rpc.transit.base.Request;
 import com.bandwidth.webrtc.signaling.rpc.transit.base.Response;
 import com.bandwidth.webrtc.signaling.websockets.WebSocketProvider;
+import com.bandwidth.webrtc.types.PublishMetadata;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
 import java.lang.reflect.Type;
 import java.net.URI;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -35,6 +33,8 @@ public class SignalingClient implements Signaling {
 
     private final Map<String, QueueRequest> pendingQueueRequests = new HashMap<>();
 
+    private Boolean hasSetMediaPreferences = false;
+
     private OnConnectListener onConnectListener;
     private OnDisconnectListener onDisconnectListener;
 
@@ -42,8 +42,24 @@ public class SignalingClient implements Signaling {
         this.webSocketProvider = webSocketProvider;
 
         webSocketProvider.setOnOpenListener(onOpenWebSocketProvider -> {
-            if (onConnectListener != null) {
-                onConnectListener.onConnect(SignalingClient.this);
+            if (!hasSetMediaPreferences) {
+                // Set media preferences once the WebSocket connection has been opened.
+                setMediaPreferences("WEBRTC", new Signaling.Adapter() {
+                    @Override
+                    public void onSetMediaPreferences(Signaling signaling, SetMediaPreferencesResult result) {
+                        super.onSetMediaPreferences(signaling, result);
+
+                        hasSetMediaPreferences = true;
+
+                        if (onConnectListener != null) {
+                            onConnectListener.onConnect(SignalingClient.this);
+                        }
+                    }
+                });
+            } else {
+                if (onConnectListener != null) {
+                    onConnectListener.onConnect(SignalingClient.this);
+                }
             }
         });
 
@@ -91,47 +107,33 @@ public class SignalingClient implements Signaling {
 
     @Override
     public void disconnect() {
+        LeaveParams params = new LeaveParams();
+        Notification<LeaveParams> notification = new Notification<>("2.0", "leave", params);
+
+        sendNotification(notification);
+
         webSocketProvider.close();
     }
 
     @Override
-    public void offerSdp(String endpointId, String sdp, Observer observer) {
-        OfferSdpParams params = new OfferSdpParams(endpointId, sdp);
+    public void offerSdp(String sdp, PublishMetadata publishMetadata, Observer observer) {
+        OfferSdpParams params = new OfferSdpParams(sdp, publishMetadata);
         Request<OfferSdpParams> request = new Request<>(UUID.randomUUID().toString(), "2.0", "offerSdp", params);
 
         sendRequest(request, observer);
     }
 
     @Override
-    public void requestToPublish(Boolean audio, Boolean video, String alias, Observer observer) {
-        List<String> mediaTypes = new ArrayList<>();
-
-        if (audio) {
-            mediaTypes.add("AUDIO");
-        }
-
-        if (video) {
-            mediaTypes.add("VIDEO");
-        }
-
-        RequestToPublishParams params = new RequestToPublishParams(mediaTypes, alias);
-        Request<RequestToPublishParams> request = new Request<>(UUID.randomUUID().toString(), "2.0", "requestToPublish", params);
+    public void answerSdp(String sdp, Observer observer) {
+        AnswerSdpParams params = new AnswerSdpParams(sdp);
+        Request<AnswerSdpParams> request = new Request<>(UUID.randomUUID().toString(), "2.0", "answerSdp", params);
 
         sendRequest(request, observer);
     }
 
-    @Override
-    public void sendIceCandidate(String endpointId, String sdp, Integer sdpMLineIndex, String sdpMid) {
-        AddIceCandidateSendParams params = new AddIceCandidateSendParams(endpointId, sdp, sdpMLineIndex, sdpMid);
-        Notification<AddIceCandidateSendParams> notification = new Notification<>("2.0", "addIceCandidate", params);
-
-        sendNotification(notification);
-    }
-
-    @Override
-    public void setMediaPreferences(Observer observer) {
-        SetMediaPreferencesParams params = new SetMediaPreferencesParams("WEB_RTC", "NONE", false);
-        Request request = new Request<>(UUID.randomUUID().toString(), "2.0", "setMediaPreferences", params);
+    private void setMediaPreferences(String protocol, Observer observer) {
+        SetMediaPreferencesParams params = new SetMediaPreferencesParams(protocol);
+        Request<SetMediaPreferencesParams> request = new Request<>(UUID.randomUUID().toString(), "2.0", "setMediaPreferences", params);
 
         sendRequest(request, observer);
     }
@@ -178,13 +180,10 @@ public class SignalingClient implements Signaling {
 
         switch (pendingQueueRequest.getMethod()) {
             case "setMediaPreferences":
-                pendingQueueRequest.getObserver().onSetMediaPreferences(this);
-                break;
-            case "requestToPublish":
-                Type requestToPublishResultType = new TypeToken<Response<RequestToPublishResult>>() { }.getType();
-                Response<RequestToPublishResult> requestToPublishResponse = new Gson().fromJson(message, requestToPublishResultType);
+                Type setMediaPreferencesResultType = new TypeToken<Response<SetMediaPreferencesResult>>() { }.getType();
+                Response<SetMediaPreferencesResult> setMediaPreferencesResponse = new Gson().fromJson(message, setMediaPreferencesResultType);
 
-                pendingQueueRequest.getObserver().onRequestToPublish(this, requestToPublishResponse.getResult());
+                pendingQueueRequest.getObserver().onSetMediaPreferences(this, setMediaPreferencesResponse.getResult());
                 break;
             case "offerSdp":
                 Type offerSdpResultType = new TypeToken<Response<OfferSdpResult>>() { }.getType();
@@ -192,29 +191,21 @@ public class SignalingClient implements Signaling {
 
                 pendingQueueRequest.getObserver().onOfferSdp(this, offerSdpResponse.getResult());
                 break;
+            case "answerSdp":
+                Type answerSdpResultType = new TypeToken<Response<AnswerSdpResult>>() {}.getType();
+                Response<AnswerSdpResult> answerSdpResponse = new Gson().fromJson(message, answerSdpResultType);
+
+                pendingQueueRequest.getObserver().onAnswerSdp(this, answerSdpResponse.getResult());
+                break;
         }
     }
 
     private void handleNotification(String message, Notification notification) {
-        switch (notification.getMethod()) {
-            case "addIceCandidate":
-                Type addIceCandidateNotificationType = new TypeToken<Notification<AddIceCandidateParams>>() { }.getType();
-                Notification<AddIceCandidateParams> addIceCandidateNotification = new Gson().fromJson(message, addIceCandidateNotificationType);
+        if (notification.getMethod().equals("sdpOffer")) {
+            Type sdpOfferNotificationType = new TypeToken<Notification<SdpOfferParams>>() { }.getType();
+            Notification<SdpOfferParams> sdpOfferNotification = new Gson().fromJson(message, sdpOfferNotificationType);
 
-                delegate.onAddIceCandidate(this, addIceCandidateNotification.getParams());
-                break;
-            case "endpointRemoved":
-                Type endpointRemovedNotificationType = new TypeToken<Notification<EndpointRemovedParams>>() { }.getType();
-                Notification<EndpointRemovedParams> endpointRemovedNotification = new Gson().fromJson(message, endpointRemovedNotificationType);
-
-                delegate.onEndpointRemoved(this, endpointRemovedNotification.getParams());
-                break;
-            case "sdpNeeded":
-                Type sdpNeededNotificationType = new TypeToken<Notification<SdpNeededParams>>() { }.getType();
-                Notification<SdpNeededParams> sdpNeededNotification = new Gson().fromJson(message, sdpNeededNotificationType);
-
-                delegate.onSdpNeeded(this, sdpNeededNotification.getParams());
-                break;
+            delegate.onSdpOffer(this, sdpOfferNotification.getParams());
         }
     }
 }

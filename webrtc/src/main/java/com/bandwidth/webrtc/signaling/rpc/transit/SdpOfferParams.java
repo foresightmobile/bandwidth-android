@@ -4,17 +4,14 @@ import com.bandwidth.webrtc.types.StreamMetadata;
 
 import java.util.Map;
 
-public class OfferSdpResult {
+public class SdpOfferParams {
     private String endpointId;
-    private String sdpAnswer;
+    private String sdpOffer;
+    private Integer sdpRevision;
     private Map<String, StreamMetadata> streamMetadata;
 
-    public String getEndpointId() {
-        return endpointId;
-    }
-
-    public String getSdpAnswer() {
-        return sdpAnswer;
+    public String getSdpOffer() {
+        return sdpOffer;
     }
 
     public Map<String, StreamMetadata> getStreamMetadata() {
