@@ -8,5 +8,5 @@ import java.util.List;
 
 public interface RTCBandwidthDelegate {
     void onStreamAvailable(RTCBandwidth bandwidth, RTCStream stream);
-    void onStreamUnavailable(RTCBandwidth bandwidth, RTCStream stream);
+    void onStreamUnavailable(RTCBandwidth bandwidth, String streamId);
 }

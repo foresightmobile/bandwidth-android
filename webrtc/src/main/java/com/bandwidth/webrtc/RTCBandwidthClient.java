@@ -79,10 +79,10 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
     // Published (outgoing) streams keyed by media stream id (msid).
     private final Map<String, PublishedStream> publishedStreams = new HashMap<>();
     // Subscribed (incoming) streams keyed by media stream id (msid).
-    private Map<String, StreamMetadata> subscribedStreams= new HashMap<>();
+    private Map<String, StreamMetadata> subscribedStreams = new HashMap<>();
 
     // Keep track of our available streams. Prevents duplicate stream available / unavailable events.
-    private Map<String, MediaStream> availableMediaStreams;
+    private final Map<String, MediaStream> availableMediaStreams = new HashMap<>();
 
     public RTCBandwidthClient(Context appContext, EglBase.Context eglContext, RTCBandwidthDelegate delegate) {
         this(appContext, eglContext, delegate, new NeoVisionariesWebSocket());
@@ -201,19 +201,11 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
         init.protocol = "udp";
 
         DataChannel dataChannel = peerConnection.createDataChannel("__diagnostics__", init);
-        dataChannel.registerObserver(new DataChannel.Observer() {
-            @Override
-            public void onBufferedAmountChange(long l) {
-
-            }
-
-            @Override
-            public void onStateChange() {
-
-            }
-
+        dataChannel.registerObserver(new DataChannelAdapter() {
             @Override
             public void onMessage(DataChannel.Buffer buffer) {
+                super.onMessage(buffer);
+
                 System.out.printf("Diagnostics Received: %s%n", StandardCharsets.UTF_8.decode(buffer.data).toString());
             }
         });
@@ -260,12 +252,27 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
                     super.onAddTrack(rtpReceiver, mediaStreams);
 
                     for (MediaStream mediaStream : mediaStreams) {
-                        StreamMetadata subscribedStream = subscribedStreams.get(mediaStream.getId());
+                        if (!availableMediaStreams.containsKey(mediaStream.getId())) {
+                            availableMediaStreams.put(mediaStream.getId(), mediaStream);
 
-                        RTCStream stream = new RTCStream(subscribedStream.getMediaTypes(), mediaStream, null, null, subscribedStream.getAlias(), subscribedStream.getParticipantId());
+                            StreamMetadata subscribedStream = subscribedStreams.get(mediaStream.getId());
 
-                        delegate.onStreamAvailable(RTCBandwidthClient.this, stream);
+                            RTCStream stream = new RTCStream(subscribedStream.getMediaTypes(), mediaStream, null, null, subscribedStream.getAlias(), subscribedStream.getParticipantId());
+
+                            delegate.onStreamAvailable(RTCBandwidthClient.this, stream);
+                        }
                     }
+                }
+
+                @Override
+                public void onRemoveStream(MediaStream mediaStream) {
+                    super.onRemoveStream(mediaStream);
+
+                    // TODO: 6/10/2021 - https://chromium.googlesource.com/external/webrtc/+/ffbfba979f9d48176c7ed5dcc60b6a8076303b71
+                    // Swap onRemoveStream for onRemoveTrack once the above change becomes available in a release.
+
+                    delegate.onStreamUnavailable(RTCBandwidthClient.this, mediaStream.getId());
+                    availableMediaStreams.remove(mediaStream.getId());
                 }
             });
 
@@ -342,7 +349,7 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
     private void cleanupPublishedStreams(Map<String, PublishedStream> publishedStreams) {
         if (publishingPeerConnection != null) {
             for (Map.Entry<String, PublishedStream> publishedStream : publishedStreams.entrySet()) {
-                List<MediaStreamTrack> tracks = new ArrayList<MediaStreamTrack>();
+                List<MediaStreamTrack> tracks = new ArrayList<>();
                 tracks.addAll(publishedStream.getValue().getMediaStream().audioTracks);
                 tracks.addAll(publishedStream.getValue().getMediaStream().videoTracks);
 
@@ -414,27 +421,12 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
                                         onHandleSubscribeSdpOfferListener.onHandleSubscribeSdpOffer();
                                     }
                                 });
-
-                            }
-
-                            @Override
-                            public void onSetFailure(String s) {
-                                super.onSetFailure(s);
                             }
                         }, mungedSessionDescription);
-                    }
-
-                    @Override
-                    public void onCreateFailure(String s) {
-                        super.onCreateFailure(s);
                     }
                 }, new MediaConstraints());
             }
 
-            @Override
-            public void onSetFailure(String s) {
-                super.onSetFailure(s);
-            }
         }, mungedSessionDescription);
     }
 
