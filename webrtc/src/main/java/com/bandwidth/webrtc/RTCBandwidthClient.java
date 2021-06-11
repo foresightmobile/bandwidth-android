@@ -1,13 +1,14 @@
 package com.bandwidth.webrtc;
 
 import android.content.Context;
-import android.se.omapi.Session;
 
 import com.bandwidth.webrtc.listeners.OnConnectListener;
 import com.bandwidth.webrtc.listeners.OnHandleSubscribeSdpOfferListener;
 import com.bandwidth.webrtc.listeners.OnOfferPublishSdpListener;
 import com.bandwidth.webrtc.listeners.OnPublishListener;
 import com.bandwidth.webrtc.listeners.OnSetupPublishingPeerConnectionListener;
+import com.bandwidth.webrtc.listeners.OnStreamAvailableListener;
+import com.bandwidth.webrtc.listeners.OnStreamUnavailableListener;
 import com.bandwidth.webrtc.listeners.OnUnpublishListener;
 import com.bandwidth.webrtc.signaling.ConnectionException;
 import com.bandwidth.webrtc.signaling.Signaling;
@@ -21,7 +22,6 @@ import com.bandwidth.webrtc.signaling.websockets.WebSocketProvider;
 import com.bandwidth.webrtc.types.DataChannelPublishMetadata;
 import com.bandwidth.webrtc.types.PublishMetadata;
 import com.bandwidth.webrtc.types.PublishedStream;
-import com.bandwidth.webrtc.types.RTCStream;
 import com.bandwidth.webrtc.types.StreamMetadata;
 import com.bandwidth.webrtc.types.StreamPublishMetadata;
 
@@ -57,8 +57,6 @@ import java.util.regex.Pattern;
 
 public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
     private final Context appContext;
-
-    private final RTCBandwidthDelegate delegate;
     private final Signaling signaling;
 
     private final PeerConnectionFactory peerConnectionFactory;
@@ -84,13 +82,15 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
     // Keep track of our available streams. Prevents duplicate stream available / unavailable events.
     private final Map<String, MediaStream> availableMediaStreams = new HashMap<>();
 
-    public RTCBandwidthClient(Context appContext, EglBase.Context eglContext, RTCBandwidthDelegate delegate) {
-        this(appContext, eglContext, delegate, new NeoVisionariesWebSocket());
+    private OnStreamAvailableListener onStreamAvailableListener;
+    private OnStreamUnavailableListener onStreamUnavailableListener;
+
+    public RTCBandwidthClient(Context appContext, EglBase.Context eglContext) {
+        this(appContext, eglContext, new NeoVisionariesWebSocket());
     }
 
-    public RTCBandwidthClient(Context appContext, EglBase.Context eglContext, RTCBandwidthDelegate delegate, WebSocketProvider webSocketProvider) {
+    public RTCBandwidthClient(Context appContext, EglBase.Context eglContext, WebSocketProvider webSocketProvider) {
         this.appContext = appContext;
-        this.delegate = delegate;
 
         signaling = new SignalingClient(webSocketProvider, this);
 
@@ -116,7 +116,6 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
         configuration.bundlePolicy = PeerConnection.BundlePolicy.MAXBUNDLE;
         configuration.rtcpMuxPolicy = PeerConnection.RtcpMuxPolicy.REQUIRE;
         configuration.enableDtlsSrtp = true;
-
     }
 
     @Override
@@ -164,8 +163,9 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
                 StreamMetadata metadata = result.getStreamMetadata().get(mediaStream.getId());
                 List<String> mediaTypes = metadata != null ? metadata.getMediaTypes() : Collections.singletonList("APPLICATION");
 
-                RTCStream stream = new RTCStream(mediaTypes, mediaStream, audioSource, videoSource, alias, null);
-                onPublishListener.onPublish(stream);
+                if (onPublishListener != null) {
+                    onPublishListener.onPublish(mediaStream.getId(), mediaTypes, audioSource, audioTrack, videoSource, videoTrack);
+                }
             });
         });
     }
@@ -183,6 +183,16 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
         offerPublishSdp(false, result -> {
             onUnpublishListener.onUnpublish();
         });
+    }
+
+    @Override
+    public void setOnStreamAvailableListener(OnStreamAvailableListener onStreamAvailableListener) {
+        this.onStreamAvailableListener = onStreamAvailableListener;
+    }
+
+    @Override
+    public void setOnStreamUnavailableListener(OnStreamUnavailableListener onStreamUnavailableListener) {
+        this.onStreamUnavailableListener = onStreamUnavailableListener;
     }
 
     private DataChannel addHeartbeatDataChannel(PeerConnection peerConnection) {
@@ -256,10 +266,11 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
                             availableMediaStreams.put(mediaStream.getId(), mediaStream);
 
                             StreamMetadata subscribedStream = subscribedStreams.get(mediaStream.getId());
-
-                            RTCStream stream = new RTCStream(subscribedStream.getMediaTypes(), mediaStream, null, null, subscribedStream.getAlias(), subscribedStream.getParticipantId());
-
-                            delegate.onStreamAvailable(RTCBandwidthClient.this, stream);
+                            if (subscribedStream != null) {
+                                if (onStreamAvailableListener != null) {
+                                    onStreamAvailableListener.onStreamAvailable(mediaStream.getId(), subscribedStream.getMediaTypes(), mediaStream.audioTracks, mediaStream.videoTracks, subscribedStream.getAlias());
+                                }
+                            }
                         }
                     }
                 }
@@ -271,8 +282,11 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
                     // TODO: 6/10/2021 - https://chromium.googlesource.com/external/webrtc/+/ffbfba979f9d48176c7ed5dcc60b6a8076303b71
                     // Swap onRemoveStream for onRemoveTrack once the above change becomes available in a release.
 
-                    delegate.onStreamUnavailable(RTCBandwidthClient.this, mediaStream.getId());
                     availableMediaStreams.remove(mediaStream.getId());
+
+                    if (onStreamUnavailableListener != null) {
+                        onStreamUnavailableListener.onStreamUnavailable(mediaStream.getId());
+                    }
                 }
             });
 

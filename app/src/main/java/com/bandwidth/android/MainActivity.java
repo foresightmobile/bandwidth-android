@@ -1,7 +1,6 @@
 package com.bandwidth.android;
 
 import android.os.Bundle;
-import android.view.View;
 import android.widget.Button;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -9,7 +8,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.bandwidth.android.app.Conference;
 import com.bandwidth.webrtc.RTCBandwidth;
 import com.bandwidth.webrtc.RTCBandwidthClient;
-import com.bandwidth.webrtc.RTCBandwidthDelegate;
 import com.bandwidth.webrtc.signaling.ConnectionException;
 import com.bandwidth.webrtc.types.RTCStream;
 
@@ -28,7 +26,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.UUID;
 
-public class MainActivity extends AppCompatActivity implements RTCBandwidthDelegate {
+public class MainActivity extends AppCompatActivity {
     private SurfaceViewRenderer localRenderer;
     private SurfaceViewRenderer remoteRenderer;
 
@@ -64,7 +62,19 @@ public class MainActivity extends AppCompatActivity implements RTCBandwidthDeleg
         remoteRenderer.setMirror(false);
         remoteRenderer.setEnableHardwareScaler(false);
 
-        bandwidth = new RTCBandwidthClient(getApplicationContext(), eglBase.getEglBaseContext(), this);
+        bandwidth = new RTCBandwidthClient(getApplicationContext(), eglBase.getEglBaseContext());
+
+        bandwidth.setOnStreamAvailableListener((streamId, mediaTypes, audioTracks, videoTracks, alias) -> {
+            runOnUiThread(() -> {
+                remoteVideoTrack = videoTracks.get(0);
+                remoteVideoTrack.setEnabled(true);
+                remoteVideoTrack.addSink(remoteRenderer);
+            });
+        });
+
+        bandwidth.setOnStreamUnavailableListener(streamId -> {
+            runOnUiThread(this::streamUnavailable);
+        });
 
         final Button button = findViewById(R.id.connectButton);
         button.setOnClickListener(view -> {
@@ -76,8 +86,6 @@ public class MainActivity extends AppCompatActivity implements RTCBandwidthDeleg
                 button.setText("Disconnect");
             }
         });
-
-
     }
 
     private void connect() {
@@ -88,14 +96,14 @@ public class MainActivity extends AppCompatActivity implements RTCBandwidthDeleg
                 bandwidth.connect(uri, () -> {
                     isConnected = true;
 
-                    bandwidth.publish("hello-world", stream -> {
+                    bandwidth.publish("hello-world", (streamId, mediaTypes, audioSource, audioTrack, videoSource, videoTrack) -> {
                         runOnUiThread(() -> {
-                            localVideoTrack = stream.getMediaStream().videoTracks.get(0);
+                            localVideoTrack = videoTrack;
 
                             surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", eglBase.getEglBaseContext());
 
                             VideoCapturer videoCapturer = createVideoCapturer();
-                            videoCapturer.initialize(surfaceTextureHelper, getApplicationContext(), stream.getVideoSource().getCapturerObserver());
+                            videoCapturer.initialize(surfaceTextureHelper, getApplicationContext(), videoSource.getCapturerObserver());
                             videoCapturer.startCapture(640, 480, 30);
 
                             localVideoTrack.setEnabled(true);
@@ -112,6 +120,8 @@ public class MainActivity extends AppCompatActivity implements RTCBandwidthDeleg
     private void disconnect() {
         isConnected = false;
         bandwidth.disconnect();
+
+        remoteRenderer.clearImage();
     }
 
     private VideoCapturer createVideoCapturer() {
@@ -148,19 +158,7 @@ public class MainActivity extends AppCompatActivity implements RTCBandwidthDeleg
         return new URI(path);
     }
 
-    @Override
-    public void onStreamAvailable(RTCBandwidth bandwidth, RTCStream stream) {
-        runOnUiThread(() -> {
-            if (remoteVideoTrack == null) {
-                remoteVideoTrack = stream.getMediaStream().videoTracks.get(0);
-                remoteVideoTrack.setEnabled(true);
-                remoteVideoTrack.addSink(remoteRenderer);
-            }
-        });
-    }
-
-    @Override
-    public void onStreamUnavailable(RTCBandwidth bandwidth, RTCStream stream) {
-
+    private void streamUnavailable() {
+        remoteRenderer.clearImage();
     }
 }
