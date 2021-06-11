@@ -19,6 +19,7 @@ import org.webrtc.RendererCommon;
 import org.webrtc.SurfaceTextureHelper;
 import org.webrtc.SurfaceViewRenderer;
 import org.webrtc.VideoCapturer;
+import org.webrtc.VideoSource;
 import org.webrtc.VideoTrack;
 
 import java.io.IOException;
@@ -97,18 +98,7 @@ public class MainActivity extends AppCompatActivity {
                     isConnected = true;
 
                     bandwidth.publish("hello-world", (streamId, mediaTypes, audioSource, audioTrack, videoSource, videoTrack) -> {
-                        runOnUiThread(() -> {
-                            localVideoTrack = videoTrack;
-
-                            surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", eglBase.getEglBaseContext());
-
-                            VideoCapturer videoCapturer = createVideoCapturer();
-                            videoCapturer.initialize(surfaceTextureHelper, getApplicationContext(), videoSource.getCapturerObserver());
-                            videoCapturer.startCapture(640, 480, 30);
-
-                            localVideoTrack.setEnabled(true);
-                            localVideoTrack.addSink(localRenderer);
-                        });
+                        runOnUiThread(() -> publish(videoSource, videoTrack));
                     });
                 });
             } catch (IOException | ConnectionException | URISyntaxException e) {
@@ -156,6 +146,19 @@ public class MainActivity extends AppCompatActivity {
 
         String path = String.format("%s?token=%s&sdkVersion=%s&uniqueId=%s", webRtcServerPath, deviceToken, sdkVersion, uniqueId);
         return new URI(path);
+    }
+
+    private void publish(VideoSource videoSource, VideoTrack videoTrack) {
+        localVideoTrack = videoTrack;
+
+        surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", eglBase.getEglBaseContext());
+
+        VideoCapturer videoCapturer = createVideoCapturer();
+        videoCapturer.initialize(surfaceTextureHelper, getApplicationContext(), videoSource.getCapturerObserver());
+        videoCapturer.startCapture(640, 480, 30);
+
+        localVideoTrack.setEnabled(true);
+        localVideoTrack.addSink(localRenderer);
     }
 
     private void streamUnavailable() {
