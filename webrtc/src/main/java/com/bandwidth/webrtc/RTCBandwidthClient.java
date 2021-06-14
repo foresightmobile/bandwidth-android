@@ -56,7 +56,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
-    private final Context appContext;
     private final Signaling signaling;
 
     private final PeerConnectionFactory peerConnectionFactory;
@@ -90,8 +89,6 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
     }
 
     public RTCBandwidthClient(Context appContext, EglBase.Context eglContext, WebSocketProvider webSocketProvider) {
-        this.appContext = appContext;
-
         signaling = new SignalingClient(webSocketProvider, this);
 
         VideoEncoderFactory videoEncoderFactory = new DefaultVideoEncoderFactory(eglContext, true, true);
@@ -225,6 +222,16 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
     private void setupPublishingPeerConnection(OnSetupPublishingPeerConnectionListener onSetupPublishingPeerConnectionListener) {
         if (publishingPeerConnection == null) {
             publishingPeerConnection = peerConnectionFactory.createPeerConnection(configuration, new PeerConnectionAdapter() {
+                @Override
+                public void onConnectionChange(PeerConnection.PeerConnectionState newState) {
+                    super.onConnectionChange(newState);
+
+                    if (newState == PeerConnection.PeerConnectionState.FAILED) {
+                        offerPublishSdp(true, result -> {
+
+                        });
+                    }
+                }
             });
 
             if (publishingPeerConnection != null) {
@@ -369,9 +376,12 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
 
                 for (MediaStreamTrack track : tracks) {
                     for (RtpTransceiver transceiver : publishingPeerConnection.getTransceivers()) {
-                        if (track == transceiver.getSender().track()) {
-                            publishingPeerConnection.removeTrack(transceiver.getSender());
-                            transceiver.stop();
+                        MediaStreamTrack transceiverTrack = transceiver.getSender().track();
+                        if (transceiverTrack != null) {
+                            if (track.id().equals(transceiverTrack.id())) {
+                                publishingPeerConnection.removeTrack(transceiver.getSender());
+                                transceiver.stop();
+                            }
                         }
                     }
                     track.setEnabled(false);

@@ -61,4 +61,9 @@ public class PeerConnectionAdapter implements PeerConnection.Observer {
     public void onAddTrack(RtpReceiver rtpReceiver, MediaStream[] mediaStreams) {
 
     }
+
+    @Override
+    public void onConnectionChange(PeerConnection.PeerConnectionState newState) {
+
+    }
 }
