@@ -49,6 +49,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -368,25 +369,28 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
     }
 
     private void cleanupPublishedStreams(Map<String, PublishedStream> publishedStreams) {
-        if (publishingPeerConnection != null) {
-            for (Map.Entry<String, PublishedStream> publishedStream : publishedStreams.entrySet()) {
-                List<MediaStreamTrack> tracks = new ArrayList<>();
-                tracks.addAll(publishedStream.getValue().getMediaStream().audioTracks);
-                tracks.addAll(publishedStream.getValue().getMediaStream().videoTracks);
+        Iterator<Map.Entry<String, PublishedStream>> iterator = publishedStreams.entrySet().iterator();
 
-                for (MediaStreamTrack track : tracks) {
-                    for (RtpTransceiver transceiver : publishingPeerConnection.getTransceivers()) {
-                        MediaStreamTrack transceiverTrack = transceiver.getSender().track();
-                        if (transceiverTrack != null) {
-                            if (track.id().equals(transceiverTrack.id())) {
-                                publishingPeerConnection.removeTrack(transceiver.getSender());
-                                transceiver.stop();
-                            }
+        while (iterator.hasNext()) {
+            Map.Entry<String, PublishedStream> publishedStream = iterator.next();
+            List<MediaStreamTrack> publishedStreamTracks = new ArrayList<>();
+            publishedStreamTracks.addAll(publishedStream.getValue().getMediaStream().audioTracks);
+            publishedStreamTracks.addAll(publishedStream.getValue().getMediaStream().videoTracks);
+
+            for (MediaStreamTrack publishedStreamTrack : publishedStreamTracks) {
+                for (RtpTransceiver transceiver : publishingPeerConnection.getTransceivers()) {
+                    MediaStreamTrack track = transceiver.getSender().track();
+                    if (track != null) {
+                        if (publishedStreamTrack.id().equals(track.id())) {
+                            publishingPeerConnection.removeTrack(transceiver.getSender());
+                            transceiver.stop();
                         }
                     }
-                    track.setEnabled(false);
                 }
+                publishedStreamTrack.setEnabled(false);
             }
+
+            iterator.remove();
         }
     }
 
