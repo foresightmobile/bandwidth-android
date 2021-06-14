@@ -373,6 +373,7 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
 
         while (iterator.hasNext()) {
             Map.Entry<String, PublishedStream> publishedStream = iterator.next();
+
             List<MediaStreamTrack> publishedStreamTracks = new ArrayList<>();
             publishedStreamTracks.addAll(publishedStream.getValue().getMediaStream().audioTracks);
             publishedStreamTracks.addAll(publishedStream.getValue().getMediaStream().videoTracks);

@@ -9,7 +9,6 @@ import com.bandwidth.android.app.Conference;
 import com.bandwidth.webrtc.RTCBandwidth;
 import com.bandwidth.webrtc.RTCBandwidthClient;
 import com.bandwidth.webrtc.signaling.ConnectionException;
-import com.bandwidth.webrtc.types.RTCStream;
 
 import org.webrtc.Camera1Enumerator;
 import org.webrtc.Camera2Enumerator;
@@ -41,6 +40,9 @@ public class MainActivity extends AppCompatActivity {
     private EglBase eglBase;
 
     private Boolean isConnected = false;
+
+    // Unique id is set once "per device".
+    private final String uniqueId = UUID.randomUUID().toString();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -141,7 +143,6 @@ public class MainActivity extends AppCompatActivity {
         final String conferenceServerPath = BuildConfig.CONFERENCE_SERVER_PATH;
 
         String deviceToken = Conference.getInstance().requestDeviceToken(conferenceServerPath);
-        String uniqueId = UUID.randomUUID().toString();
         String sdkVersion = "android-alpha";
 
         String path = String.format("%s?token=%s&sdkVersion=%s&uniqueId=%s", webRtcServerPath, deviceToken, sdkVersion, uniqueId);
