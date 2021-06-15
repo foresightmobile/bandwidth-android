@@ -48,7 +48,7 @@ public class SignalingClientTest {
             lock.countDown();
         });
 
-        client.connect(uri);
+        client.connect(webRtcServerPath, deviceToken);
 
         lock.await(5000, TimeUnit.MILLISECONDS);
 
