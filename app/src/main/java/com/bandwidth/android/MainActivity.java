@@ -22,9 +22,6 @@ import org.webrtc.VideoSource;
 import org.webrtc.VideoTrack;
 
 import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity {
     private SurfaceViewRenderer localRenderer;
@@ -42,9 +39,6 @@ public class MainActivity extends AppCompatActivity {
     private EglBase eglBase;
 
     private Boolean isConnected = false;
-
-    // Unique id is set once "per device".
-    private final String deviceUniqueId = UUID.randomUUID().toString();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -97,7 +91,7 @@ public class MainActivity extends AppCompatActivity {
         new Thread((() -> {
             try {
                 String deviceToken = Conference.getInstance().requestDeviceToken(BuildConfig.CONFERENCE_SERVER_PATH);
-                bandwidth.connect(BuildConfig.WEBRTC_SERVER_PATH, deviceToken, deviceUniqueId, () -> {
+                bandwidth.connect(BuildConfig.WEBRTC_SERVER_PATH, deviceToken, () -> {
                     isConnected = true;
 
                     bandwidth.publish("hello-world", (streamId, mediaTypes, audioSource, audioTrack, videoSource, videoTrack) -> {

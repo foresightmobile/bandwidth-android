@@ -31,6 +31,8 @@ public class SignalingClient implements Signaling {
     private final WebSocketProvider webSocketProvider;
     private final SignalingDelegate delegate;
 
+    private final String deviceUniqueId = UUID.randomUUID().toString();
+
     private final Map<String, QueueRequest> pendingQueueRequests = new HashMap<>();
 
     private Boolean hasSetMediaPreferences = false;
@@ -101,12 +103,12 @@ public class SignalingClient implements Signaling {
     }
 
     @Override
-    public void connect(String deviceToken, String deviceUniqueId) throws ConnectionException {
-        connect("wss://device.webrtc.bandwidth.com", deviceToken, deviceUniqueId);
+    public void connect(String deviceToken) throws ConnectionException {
+        connect("wss://device.webrtc.bandwidth.com", deviceToken);
     }
 
     @Override
-    public void connect(String webSocketUrl, String deviceToken, String deviceUniqueId) throws ConnectionException {
+    public void connect(String webSocketUrl, String deviceToken) throws ConnectionException {
         String url = String.format("%s/v3/?token=%s&client=android&sdkVersion=0.1.0-alpha.2&uniqueId=%s", webSocketUrl, deviceToken, deviceUniqueId);
         webSocketProvider.open(url);
     }

@@ -11,8 +11,8 @@ import java.net.URI;
 import java.util.List;
 
 public interface RTCBandwidth {
-    void connect(String deviceToken, String deviceUniqueId, OnConnectListener onConnectListener) throws ConnectionException;
-    void connect(String webSocketUrl, String deviceToken, String deviceUniqueId, OnConnectListener onConnectListener) throws ConnectionException;
+    void connect(String deviceToken, OnConnectListener onConnectListener) throws ConnectionException;
+    void connect(String webSocketUrl, String deviceToken, OnConnectListener onConnectListener) throws ConnectionException;
     void disconnect();
 
     void publish(String alias, OnPublishListener onPublishListener);
