@@ -34,6 +34,8 @@ public class MainActivity extends AppCompatActivity {
 
     private RTCBandwidth bandwidth;
 
+    VideoCapturer videoCapturer;
+
     private VideoTrack localVideoTrack;
     private VideoTrack remoteVideoTrack;
 
@@ -111,6 +113,14 @@ public class MainActivity extends AppCompatActivity {
 
     private void disconnect() {
         isConnected = false;
+
+        try {
+            videoCapturer.stopCapture();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        localRenderer.clearImage();
+
         bandwidth.disconnect();
 
         remoteRenderer.clearImage();
@@ -154,7 +164,7 @@ public class MainActivity extends AppCompatActivity {
 
         surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", eglBase.getEglBaseContext());
 
-        VideoCapturer videoCapturer = createVideoCapturer();
+        videoCapturer = createVideoCapturer();
         videoCapturer.initialize(surfaceTextureHelper, getApplicationContext(), videoSource.getCapturerObserver());
         videoCapturer.startCapture(640, 480, 30);
 
