@@ -137,6 +137,8 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
             subscribingPeerConnection.close();
             subscribingPeerConnection = null;
         }
+
+        availableMediaStreams.clear();
     }
 
     @Override
