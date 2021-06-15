@@ -112,6 +112,8 @@ public class SignalingClient implements Signaling {
 
         sendNotification(notification);
 
+        hasSetMediaPreferences = false;
+
         webSocketProvider.close();
     }
 
