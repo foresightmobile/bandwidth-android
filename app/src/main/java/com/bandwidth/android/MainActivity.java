@@ -27,8 +27,6 @@ public class MainActivity extends AppCompatActivity {
     private SurfaceViewRenderer localRenderer;
     private SurfaceViewRenderer remoteRenderer;
 
-    private SurfaceTextureHelper surfaceTextureHelper;
-
     private RTCBandwidth bandwidth;
 
     VideoCapturer videoCapturer;
@@ -144,7 +142,7 @@ public class MainActivity extends AppCompatActivity {
     private void publish(VideoSource videoSource, VideoTrack videoTrack) {
         localVideoTrack = videoTrack;
 
-        surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", eglBase.getEglBaseContext());
+        SurfaceTextureHelper surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", eglBase.getEglBaseContext());
 
         videoCapturer = createVideoCapturer();
         videoCapturer.initialize(surfaceTextureHelper, getApplicationContext(), videoSource.getCapturerObserver());
