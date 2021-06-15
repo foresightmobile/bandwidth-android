@@ -13,7 +13,8 @@ public interface Signaling {
     void setOnConnectListener(OnConnectListener listener);
     void setOnDisconnectListener(OnDisconnectListener listener);
 
-    void connect(URI uri) throws ConnectionException;
+    void connect(String deviceToken, String deviceUniqueId) throws ConnectionException;
+    void connect(String webSocketUrl, String deviceToken, String deviceUniqueId) throws ConnectionException;
     void disconnect();
     void offerSdp(String sdp, PublishMetadata publishMetadata, Observer observer);
     void answerSdp(String sdp, Observer observer);

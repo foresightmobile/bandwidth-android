@@ -117,12 +117,19 @@ public class RTCBandwidthClient implements RTCBandwidth, SignalingDelegate {
     }
 
     @Override
-    public void connect(URI uri, OnConnectListener onConnectListener) throws ConnectionException {
+    public void connect(String deviceToken, String deviceUniqueId, OnConnectListener onConnectListener) throws ConnectionException {
         signaling.setOnConnectListener(signaling -> {
             onConnectListener.onConnect();
         });
+        signaling.connect(deviceToken, deviceUniqueId);
+    }
 
-        signaling.connect(uri);
+    @Override
+    public void connect(String webSocketUrl, String deviceToken, String deviceUniqueId, OnConnectListener onConnectListener) throws ConnectionException {
+        signaling.setOnConnectListener(signaling -> {
+            onConnectListener.onConnect();
+        });
+        signaling.connect(webSocketUrl, deviceToken, deviceUniqueId);
     }
 
     @Override

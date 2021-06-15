@@ -44,7 +44,7 @@ public class MainActivity extends AppCompatActivity {
     private Boolean isConnected = false;
 
     // Unique id is set once "per device".
-    private final String uniqueId = UUID.randomUUID().toString();
+    private final String deviceUniqueId = UUID.randomUUID().toString();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -96,16 +96,15 @@ public class MainActivity extends AppCompatActivity {
     private void connect() {
         new Thread((() -> {
             try {
-                URI uri = createURI();
-
-                bandwidth.connect(uri, () -> {
+                String deviceToken = Conference.getInstance().requestDeviceToken(BuildConfig.CONFERENCE_SERVER_PATH);
+                bandwidth.connect(BuildConfig.WEBRTC_SERVER_PATH, deviceToken, deviceUniqueId, () -> {
                     isConnected = true;
 
                     bandwidth.publish("hello-world", (streamId, mediaTypes, audioSource, audioTrack, videoSource, videoTrack) -> {
                         runOnUiThread(() -> publish(videoSource, videoTrack));
                     });
                 });
-            } catch (IOException | ConnectionException | URISyntaxException e) {
+            } catch (IOException | ConnectionException e) {
                 e.printStackTrace();
             }
         })).start();
@@ -146,17 +145,6 @@ public class MainActivity extends AppCompatActivity {
         }
 
         return new Camera1Enumerator(false);
-    }
-
-    private URI createURI() throws URISyntaxException, IOException {
-        final String webRtcServerPath = BuildConfig.WEBRTC_SERVER_PATH;
-        final String conferenceServerPath = BuildConfig.CONFERENCE_SERVER_PATH;
-
-        String deviceToken = Conference.getInstance().requestDeviceToken(conferenceServerPath);
-        String sdkVersion = "android-alpha";
-
-        String path = String.format("%s?token=%s&sdkVersion=%s&uniqueId=%s", webRtcServerPath, deviceToken, sdkVersion, uniqueId);
-        return new URI(path);
     }
 
     private void publish(VideoSource videoSource, VideoTrack videoTrack) {

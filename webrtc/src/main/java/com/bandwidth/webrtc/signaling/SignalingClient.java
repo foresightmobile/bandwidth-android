@@ -101,8 +101,14 @@ public class SignalingClient implements Signaling {
     }
 
     @Override
-    public void connect(URI uri) throws ConnectionException {
-        webSocketProvider.open(uri);
+    public void connect(String deviceToken, String deviceUniqueId) throws ConnectionException {
+        connect("wss://device.webrtc.bandwidth.com", deviceToken, deviceUniqueId);
+    }
+
+    @Override
+    public void connect(String webSocketUrl, String deviceToken, String deviceUniqueId) throws ConnectionException {
+        String url = String.format("%s/v3/?token=%s&client=android&sdkVersion=0.1.0-alpha.2&uniqueId=%s", webSocketUrl, deviceToken, deviceUniqueId);
+        webSocketProvider.open(url);
     }
 
     @Override

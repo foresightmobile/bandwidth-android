@@ -49,7 +49,7 @@ public class NeoVisionariesWebSocket implements WebSocketProvider {
     }
 
     @Override
-    public void open(URI uri) throws ConnectionException {
+    public void open(String uri) throws ConnectionException {
         try {
             webSocket = new WebSocketFactory().createSocket(uri);
             webSocket.addListener(new WebSocketAdapter() {
