@@ -1,19 +1,13 @@
 package com.bandwidth.webrtc.signaling.rpc.transit;
 
+import com.bandwidth.webrtc.types.PublishMetadata;
+
 public class OfferSdpParams {
-    private String endpointId;
-    private String sdpOffer;
+    private final String sdpOffer;
+    private final PublishMetadata mediaMetadata;
 
-    public OfferSdpParams(String endpointId, String sdpOffer) {
-        this.endpointId = endpointId;
+    public OfferSdpParams(String sdpOffer, PublishMetadata mediaMetadata) {
         this.sdpOffer = sdpOffer;
-    }
-
-    public String getEndpointId() {
-        return endpointId;
-    }
-
-    public String getSdpOffer() {
-        return sdpOffer;
+        this.mediaMetadata = mediaMetadata;
     }
 }

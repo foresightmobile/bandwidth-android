@@ -14,7 +14,7 @@ public interface WebSocketProvider {
     void setOnMessageListener(OnMessageListener onMessageListener);
     void setOnErrorListener(OnErrorListener onErrorListener);
 
-    void open(URI uri) throws ConnectionException;
+    void open(String uri) throws ConnectionException;
     void close();
     void sendMessage(String message);
 }

@@ -1,14 +1,13 @@
 package com.bandwidth.android;
 
 import android.os.Bundle;
+import android.widget.Button;
 
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.bandwidth.android.app.Conference;
-import com.bandwidth.android.BuildConfig;
 import com.bandwidth.webrtc.RTCBandwidth;
 import com.bandwidth.webrtc.RTCBandwidthClient;
-import com.bandwidth.webrtc.RTCBandwidthDelegate;
 import com.bandwidth.webrtc.signaling.ConnectionException;
 
 import org.webrtc.Camera1Enumerator;
@@ -16,30 +15,28 @@ import org.webrtc.Camera2Enumerator;
 import org.webrtc.CameraEnumerator;
 import org.webrtc.EglBase;
 import org.webrtc.RendererCommon;
-import org.webrtc.RtpReceiver;
 import org.webrtc.SurfaceTextureHelper;
 import org.webrtc.SurfaceViewRenderer;
 import org.webrtc.VideoCapturer;
+import org.webrtc.VideoSource;
 import org.webrtc.VideoTrack;
 
 import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.List;
-import java.util.UUID;
 
-public class MainActivity extends AppCompatActivity implements RTCBandwidthDelegate {
+public class MainActivity extends AppCompatActivity {
     private SurfaceViewRenderer localRenderer;
     private SurfaceViewRenderer remoteRenderer;
 
-    private SurfaceTextureHelper surfaceTextureHelper;
-
     private RTCBandwidth bandwidth;
+
+    VideoCapturer videoCapturer;
 
     private VideoTrack localVideoTrack;
     private VideoTrack remoteVideoTrack;
 
     private EglBase eglBase;
+
+    private Boolean isConnected = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -62,56 +59,62 @@ public class MainActivity extends AppCompatActivity implements RTCBandwidthDeleg
         remoteRenderer.setMirror(false);
         remoteRenderer.setEnableHardwareScaler(false);
 
-        bandwidth = new RTCBandwidthClient(getApplicationContext(), eglBase.getEglBaseContext(), this);
+        bandwidth = new RTCBandwidthClient(getApplicationContext(), eglBase.getEglBaseContext());
 
-        bandwidth.setOnConnectListener(() -> {
-            System.out.println("Connected...");
-
-            bandwidth.publish(true, true, "sample-alias");
-        });
-
-        bandwidth.setOnPublishListener((mediaTypes, audioSource, audioTrack, videoSource, videoTrack) -> {
+        bandwidth.setOnStreamAvailableListener((streamId, mediaTypes, audioTracks, videoTracks, alias) -> {
             runOnUiThread(() -> {
-                localVideoTrack = videoTrack;
-
-                surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", eglBase.getEglBaseContext());
-
-                VideoCapturer videoCapturer = createVideoCapturer();
-                videoCapturer.initialize(surfaceTextureHelper, getApplicationContext(), videoSource.getCapturerObserver());
-                videoCapturer.startCapture(640, 480, 30);
-
-                localVideoTrack.setEnabled(true);
-                localVideoTrack.addSink(localRenderer);
+                remoteVideoTrack = videoTracks.get(0);
+                remoteVideoTrack.setEnabled(true);
+                remoteVideoTrack.addSink(remoteRenderer);
             });
-
-            System.out.println("Published...");
         });
 
+        bandwidth.setOnStreamUnavailableListener(streamId -> {
+            runOnUiThread(this::streamUnavailable);
+        });
+
+        final Button button = findViewById(R.id.connectButton);
+        button.setOnClickListener(view -> {
+            if (isConnected) {
+                disconnect();
+                button.setText("Connect");
+            } else {
+                connect();
+                button.setText("Disconnect");
+            }
+        });
+    }
+
+    private void connect() {
         new Thread((() -> {
             try {
-                URI uri = createURI();
+                String deviceToken = Conference.getInstance().requestDeviceToken(BuildConfig.CONFERENCE_SERVER_PATH);
+                bandwidth.connect(BuildConfig.WEBRTC_SERVER_PATH, deviceToken, () -> {
+                    isConnected = true;
 
-                bandwidth.connect(uri);
-            } catch (IOException | ConnectionException | URISyntaxException e) {
+                    bandwidth.publish("hello-world", (streamId, mediaTypes, audioSource, audioTrack, videoSource, videoTrack) -> {
+                        runOnUiThread(() -> publish(videoSource, videoTrack));
+                    });
+                });
+            } catch (IOException | ConnectionException e) {
                 e.printStackTrace();
             }
         })).start();
     }
 
-    @Override
-    public void onStreamAvailable(RTCBandwidth bandwidth, String endpointId, String participantId, String alias, List<String> mediaTypes, RtpReceiver rtpReceiver) {
-        System.out.println("Stream Available");
+    private void disconnect() {
+        isConnected = false;
 
-        if (rtpReceiver.track() instanceof VideoTrack) {
-            remoteVideoTrack = (VideoTrack) rtpReceiver.track();
-            remoteVideoTrack.setEnabled(true);
-            remoteVideoTrack.addSink(remoteRenderer);
+        try {
+            videoCapturer.stopCapture();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
-    }
+        localRenderer.clearImage();
 
-    @Override
-    public void onStreamUnavailable(RTCBandwidth bandwidth, String endpointId) {
-        System.out.println("Stream unavailable");
+        bandwidth.disconnect();
+
+        remoteRenderer.clearImage();
     }
 
     private VideoCapturer createVideoCapturer() {
@@ -136,14 +139,20 @@ public class MainActivity extends AppCompatActivity implements RTCBandwidthDeleg
         return new Camera1Enumerator(false);
     }
 
-    private URI createURI() throws URISyntaxException, IOException {
-        final String webRtcServerPath = BuildConfig.WEBRTC_SERVER_PATH;
-        final String conferenceServerPath = BuildConfig.CONFERENCE_SERVER_PATH;
+    private void publish(VideoSource videoSource, VideoTrack videoTrack) {
+        localVideoTrack = videoTrack;
 
-        String deviceToken = Conference.getInstance().requestDeviceToken(conferenceServerPath);
-        String uniqueId = UUID.randomUUID().toString();
+        SurfaceTextureHelper surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", eglBase.getEglBaseContext());
 
-        String path = String.format("%s?token=%s&uniqueId=%s", webRtcServerPath, deviceToken, uniqueId);
-        return new URI(path);
+        videoCapturer = createVideoCapturer();
+        videoCapturer.initialize(surfaceTextureHelper, getApplicationContext(), videoSource.getCapturerObserver());
+        videoCapturer.startCapture(640, 480, 30);
+
+        localVideoTrack.setEnabled(true);
+        localVideoTrack.addSink(localRenderer);
+    }
+
+    private void streamUnavailable() {
+        remoteRenderer.clearImage();
     }
 }

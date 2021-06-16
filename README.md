@@ -11,33 +11,42 @@ The Bandwidth Android SDK makes it quick and easy to build an excellent audio an
 ## Getting Started
 
 ```java
-class WebRTCService implements RTCBandwidthDelegate {
-    RTCBandwidth bandwidth;
-
-    public WebRTCService(Context context) throws URISyntaxException {
-        bandwidth = new RTCBandwidthClient(context, this);
-
-        bandwidth.setOnConnectListener(() -> {
-            // Start requesting to publish audio and video once connected.
-            bandwidth.publish(true, true, "stream-alias");
-        });
-
-        bandwidth.setOnPublishListener((mediaTypes, audioSender, videoSender) -> {
-            // Work with the local audio and video senders.
-        });
-
-        URI uri = new URI("wss://device.webrtc.bandwidth.com/v2?token=<token>&uniqueId=<unique-id>");
-        bandwidth.connect(uri);
-    }
+class MainActivity extends AppCompatActivity {
+    private RTCBandwidth bandwidth;
 
     @Override
-    public void onStreamAvailable(RTCBandwidth bandwidth, String endpointId, String participantId, String alias, List<String> mediaTypes, RtpReceiver rtpReceiver) {
-        System.out.println("onStreamAvailable");
-    }
+    protected void onCreate(Bundle savedInstanceState) {
+        // Request camera permissions to allow capturing local video.
 
-    @Override
-    public void onStreamUnavailable(RTCBandwidth bandwidth, String endpointId) {
-        System.out.println("onStreamUnavailable");
+        // Setup any local and remote renderers.
+
+        bandwidth = new RTCBandwidthClient(getApplicationContext(), EglBase.create().getEglBaseContext());
+
+        // Called when a remote stream has become available.
+        bandwidth.setOnStreamAvailableListener((streamId, mediaTypes, audioTracks, videoTracks, alias) -> {
+            runOnUiThread(() -> {
+                // Add remote renderers to available video tracks.
+            });
+        });
+
+        // Called when a remote stream has become unavailable.
+        bandwidth.setOnStreamUnavailableListener(streamId -> {
+            runOnUiThread(() -> {
+                // Clear remote renterers for the corresponding stream.
+            });
+        });
+
+        // Connect to Bandwidth using the device token returned via Bandwidth's server-side WebRTC APIs.
+        bandwidth.connect(deviceToken, () -> {
+            // Once connected start publishing media.
+            bandwidth.publish("android", (streamId, mediaTypes, audioSource, audioTrack, videoSource, videoTrack) -> {
+                runOnUiThread(() -> {
+                    // Start capturing local video using the video source.
+
+                    // Add local renderer to the available video track.
+                });
+            });
+        });
     }
 }
 ```
