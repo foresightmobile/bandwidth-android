@@ -1,8 +1,7 @@
 name: Publish package to the Maven Central Repository
 on:
   pull_request:
-    branches:
-      - 'task/add-publish-workflow'
+
 jobs:
   publish:
     env:
