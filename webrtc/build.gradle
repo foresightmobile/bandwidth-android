@@ -2,6 +2,14 @@ plugins {
     id 'com.android.library'
 }
 
+ext {
+    PUBLISH_GROUP_ID = 'com.bandwidth'
+    PUBLISH_VERSION = '0.1.0'
+    PUBLISH_ARTIFACT_ID = 'bandwidth-android-webrtc'
+}
+
+apply from: "${rootProject.projectDir}/scripts/publish-module.gradle"
+
 android {
     compileSdkVersion 30
     buildToolsVersion "30.0.3"
