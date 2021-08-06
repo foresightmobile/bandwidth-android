@@ -1,11 +1,10 @@
 name: Publish package to the Maven Central Repository
 on:
-  release:
-    types:
-      - published
+  pull_request:
+    branches:
+      - task/add-publish-workflow
 jobs:
   publish:
-    if: ${{ !github.event.release.prerelease && github.event.release.target_commitish == 'main' }}
     env:
       BANDWIDTH_URL_WEBRTC_SERVER: ${{ secrets.BANDWIDTH_URL_WEBRTC_SERVER }}
       BANDWIDTH_URL_WEBRTC_CONFERENCE_SERVER: ${{ secrets.BANDWIDTH_URL_WEBRTC_CONFERENCE_SERVER }}
