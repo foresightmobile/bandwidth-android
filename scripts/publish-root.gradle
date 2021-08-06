@@ -9,6 +9,7 @@ ext["signing.key"] = System.getenv('SIGNING_KEY')
 nexusPublishing {
     repositories {
         sonatype {
+            stagingProfileId = sonatypeStagingProfileId
             username = ossrhUsername
             password = ossrhPassword
         }
