@@ -21,6 +21,9 @@ jobs:
     - name: Get Gradle project version
       run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/v}" >> $GITHUB_ENV
 
+    - name: Source JAR
+      run: ./gradlew androidSourcesJar
+
     - name: Publish to Apache Maven Central
       run: ./gradlew publishReleasePublicationToSonatypeRepository --max-workers 1
       env:
