@@ -21,6 +21,9 @@ jobs:
     - name: Get Gradle project version
       run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/v}" >> $GITHUB_ENV
 
+    - name: Release build
+      run: ./gradlew assembleRelease -x :app:assembleRelease
+
     - name: Source JAR
       run: ./gradlew androidSourcesJar
 
