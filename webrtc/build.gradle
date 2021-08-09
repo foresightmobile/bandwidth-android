@@ -2,6 +2,14 @@ plugins {
     id 'com.android.library'
 }
 
+ext {
+    PUBLISH_GROUP_ID = 'com.bandwidth'
+    PUBLISH_VERSION = System.getenv('RELEASE_VERSION')
+    PUBLISH_ARTIFACT_ID = 'bandwidth-android-webrtc'
+}
+
+apply from: "${rootProject.projectDir}/scripts/publish-module.gradle"
+
 android {
     compileSdkVersion 30
     buildToolsVersion "30.0.3"
@@ -9,8 +17,6 @@ android {
     defaultConfig {
         minSdkVersion 23
         targetSdkVersion 30
-        versionCode 1
-        versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles "consumer-rules.pro"
