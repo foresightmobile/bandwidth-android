@@ -1,9 +1,12 @@
 package com.bandwidth.android;
 
+import android.Manifest;
+import android.content.pm.ActivityInfo;
 import android.os.Bundle;
 import android.widget.Button;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 
 import com.bandwidth.android.app.Conference;
 import com.bandwidth.webrtc.RTCBandwidth;
@@ -22,6 +25,10 @@ import org.webrtc.VideoSource;
 import org.webrtc.VideoTrack;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Set;
 
 public class MainActivity extends AppCompatActivity {
     private SurfaceViewRenderer localRenderer;
@@ -33,6 +40,7 @@ public class MainActivity extends AppCompatActivity {
 
     private VideoTrack localVideoTrack;
     private VideoTrack remoteVideoTrack;
+    private HashMap<String, VideoTrack> offeredVideoTracks = new HashMap<String, VideoTrack>();
 
     private EglBase eglBase;
 
@@ -43,7 +51,9 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-//        ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.CAMERA}, 100);
+        this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+
+        ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.CAMERA,Manifest.permission.RECORD_AUDIO}, 100);
 
         localRenderer = findViewById(R.id.localSurfaceViewRenderer);
         remoteRenderer = findViewById(R.id.remoteSurfaceViewRenderer);
@@ -52,6 +62,7 @@ public class MainActivity extends AppCompatActivity {
 
         // Create local video renderer.
         localRenderer.init(eglBase.getEglBaseContext(), null);
+        localRenderer.setMirror(true);
         localRenderer.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FIT);
 
         // Create remote video renderer.
@@ -62,15 +73,35 @@ public class MainActivity extends AppCompatActivity {
         bandwidth = new RTCBandwidthClient(getApplicationContext(), eglBase.getEglBaseContext());
 
         bandwidth.setOnStreamAvailableListener((streamId, mediaTypes, audioTracks, videoTracks, alias) -> {
-            runOnUiThread(() -> {
-                remoteVideoTrack = videoTracks.get(0);
-                remoteVideoTrack.setEnabled(true);
-                remoteVideoTrack.addSink(remoteRenderer);
-            });
+            if (!videoTracks.isEmpty()) {
+                if (!offeredVideoTracks.containsKey(streamId)) {
+                    offeredVideoTracks.put(streamId,videoTracks.get(0));
+                }
+                if (remoteVideoTrack == null) {
+                    runOnUiThread(() -> {
+                        remoteVideoTrack = videoTracks.get(0);
+                        remoteVideoTrack.setEnabled(true);
+                        remoteVideoTrack.addSink(remoteRenderer);
+                    });
+                };
+            };
         });
 
         bandwidth.setOnStreamUnavailableListener(streamId -> {
-            runOnUiThread(this::streamUnavailable);
+            offeredVideoTracks.remove(streamId);
+            if (offeredVideoTracks.isEmpty()) {
+                System.out.println("on Stream NOT available - no more tracks");
+                remoteRenderer.clearImage();
+                remoteVideoTrack = null;
+            } else {
+                VideoTrack temp = offeredVideoTracks.entrySet().iterator().next().getValue();
+                System.out.println("on Stream NOT available - video track replacement - " +  temp);
+                runOnUiThread(() -> {
+                    remoteVideoTrack = temp;
+                    remoteVideoTrack.setEnabled(true);
+                    remoteVideoTrack.addSink(remoteRenderer);
+                });
+            };
         });
 
         final Button button = findViewById(R.id.connectButton);
@@ -86,13 +117,14 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void connect() {
+        offeredVideoTracks = new HashMap<String, VideoTrack>();
         new Thread((() -> {
             try {
                 String deviceToken = Conference.getInstance().requestDeviceToken(BuildConfig.CONFERENCE_SERVER_PATH);
                 bandwidth.connect(BuildConfig.WEBRTC_SERVER_PATH, deviceToken, () -> {
                     isConnected = true;
 
-                    bandwidth.publish("hello-world", (streamId, mediaTypes, audioSource, audioTrack, videoSource, videoTrack) -> {
+                    bandwidth.publish("hello-world-android", (streamId, mediaTypes, audioSource, audioTrack, videoSource, videoTrack) -> {
                         runOnUiThread(() -> publish(videoSource, videoTrack));
                     });
                 });
@@ -111,6 +143,7 @@ public class MainActivity extends AppCompatActivity {
             e.printStackTrace();
         }
         localRenderer.clearImage();
+        remoteVideoTrack = null;
 
         bandwidth.disconnect();
 
@@ -146,13 +179,12 @@ public class MainActivity extends AppCompatActivity {
 
         videoCapturer = createVideoCapturer();
         videoCapturer.initialize(surfaceTextureHelper, getApplicationContext(), videoSource.getCapturerObserver());
-        videoCapturer.startCapture(640, 480, 30);
+        videoCapturer.startCapture(640, 480, 20);
+
+        System.out.println("video stream attributes" + videoTrack);
 
         localVideoTrack.setEnabled(true);
         localVideoTrack.addSink(localRenderer);
     }
 
-    private void streamUnavailable() {
-        remoteRenderer.clearImage();
-    }
 }
