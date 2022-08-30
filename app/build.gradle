@@ -23,8 +23,8 @@ android {
         }
 
         applicationVariants.all { variant ->
-            variant.buildConfigField "String", "WEBRTC_SERVER_PATH", "\""+getWebRTCServerPath()+"\""
-            variant.buildConfigField "String", "CONFERENCE_SERVER_PATH", "\""+getConferenceServerPath()+"\""
+            variant.buildConfigField "String", "WEBRTC_SERVER_PATH", "\"wss://device.webrtc.bandwidth.com\""
+            variant.buildConfigField "String", "CONFERENCE_SERVER_PATH", "\"https://meet.webrtc.bandwidth.com/conferences/demo/participants\""
         }
     }
     compileOptions {
@@ -32,23 +32,6 @@ android {
         targetCompatibility JavaVersion.VERSION_1_8
     }
 }
-
-def getWebRTCServerPath() {
-    def Properties props = new Properties()
-    File file = new File('app/config.properties')
-    if (file.exists())
-        props.load(new FileInputStream(file))
-    return props['WEBRTC_SERVER_PATH']
-}
-
-def getConferenceServerPath() {
-    def Properties props = new Properties()
-    File file = new File('app/config.properties')
-    if (file.exists())
-        props.load(new FileInputStream(file))
-    return props['CONFERENCE_SERVER_PATH']
-}
-
 dependencies {
 
     implementation 'org.webrtc:google-webrtc:1.0.32006'
